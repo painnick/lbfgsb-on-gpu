@@ -33,6 +33,9 @@ Contributors:
 #include "cutil_inline.h"
 #include <cublas_v2.h>
 
+#define __min(a,b) (((a)<(b))?(a):(b))
+#define __max(a,b) (((a)>(b))?(a):(b))
+
 extern cublasHandle_t cublasHd;
 
 #define MODU8

@@ -142,7 +142,7 @@ CGparameter VP_ScatterCentroid_Size;
 
 /*********************************************/
 void CheckFramebufferStatus();
-void DrawSites(real* x, bool FinalDrawSite, const cudaStream_t& stream);
+void DrawSites(real* x, const cudaStream_t& stream);
 real BFGSOptimization(void);
 real DrawVoronoi(real* x);
 void Display(void);

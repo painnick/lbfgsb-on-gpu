@@ -12,7 +12,6 @@ All Rights Reserved.
 
 #include "voronoi.h"
 #include <assert.h>
-#include <stdio.h>
 
 extern void Energyf(cudaGraphicsResource_t grSite, real* g, real* f, int w, int h, int nsite, const cudaStream_t& stream);
 extern void ConvertSites(real* x, cudaGraphicsResource_t gr, int nsite, int screenw, const cudaStream_t& stream);
@@ -454,7 +453,7 @@ real BFGSOptimization()
 	}
 */
 
-	printf("Start optimization...\n");
+	printf("Start optimization...");
 	get_timestamp(start_time);
 
 	stpscal = 2.75f;
@@ -466,7 +465,7 @@ real BFGSOptimization()
 	{
 		bNewIteration = true;
 		lbfgsbminimize(site_num*2, m, x, epsg, epsf, epsx, maxits, nbd, l, u, info);
-		printf("Ending code:%d\n", info);
+		//printf("Ending code:%d\n", info);
 	}
 
 	get_timestamp(end_time);
@@ -1168,7 +1167,6 @@ real DrawVoronoi(real* xx)
 		DrawSites(true);
 	}*/
 
-	DrawSites(true, xx, NULL);
 
 	return fEnergy;
 }
@@ -1450,8 +1448,8 @@ void InitializeGlut(int *argc, char *argv[])
 	glTexParameteri(GL_TEXTURE_RECTANGLE_NV, GL_TEXTURE_WRAP_S, GL_CLAMP);
 	glTexParameteri(GL_TEXTURE_RECTANGLE_NV, GL_TEXTURE_WRAP_T, GL_CLAMP);
 
-	cudaGraphicsGLRegisterImage(&grSite, Site_Texture,
-		GL_TEXTURE_RECTANGLE_NV, cudaGraphicsMapFlagsReadOnly);
+	cutilSafeCall(cudaGraphicsGLRegisterImage(&grSite, Site_Texture, 
+		GL_TEXTURE_RECTANGLE_NV, cudaGraphicsMapFlagsReadOnly));
 
 	glGenTextures(2, Energy_Texture);
 	glBindTexture(GL_TEXTURE_RECTANGLE_NV, Energy_Texture[0]);
