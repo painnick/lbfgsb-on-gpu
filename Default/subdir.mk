@@ -24,16 +24,16 @@ CPP_DEPS += \
 %.o: ../%.cpp
 	@echo 'Building file: $<'
 	@echo 'Invoking: NVCC Compiler'
-	/usr/local/cuda-5.5/bin/nvcc -DGL_GLEXT_PROTOTYPES -O2 -gencode arch=compute_30,code=sm_30 -odir "" -M -o "$(@:%.o=%.d)" "$<"
-	/usr/local/cuda-5.5/bin/nvcc -DGL_GLEXT_PROTOTYPES -O2 --compile  -x c++ -o  "$@" "$<"
+	/usr/local/cuda-5.5/bin/nvcc -DGL_GLEXT_PROTOTYPES -G -g -lineinfo -pg -O2 -gencode arch=compute_30,code=sm_30 -odir "" -M -o "$(@:%.o=%.d)" "$<"
+	/usr/local/cuda-5.5/bin/nvcc -DGL_GLEXT_PROTOTYPES -G -g -lineinfo -pg -O2 --compile  -x c++ -o  "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 
 %.o: ../%.cu
 	@echo 'Building file: $<'
 	@echo 'Invoking: NVCC Compiler'
-	/usr/local/cuda-5.5/bin/nvcc -DGL_GLEXT_PROTOTYPES -O2 -gencode arch=compute_30,code=sm_30 -odir "" -M -o "$(@:%.o=%.d)" "$<"
-	/usr/local/cuda-5.5/bin/nvcc --compile -DGL_GLEXT_PROTOTYPES -O2 -gencode arch=compute_30,code=compute_30 -gencode arch=compute_30,code=sm_30  -x cu -o  "$@" "$<"
+	/usr/local/cuda-5.5/bin/nvcc -DGL_GLEXT_PROTOTYPES -G -g -lineinfo -pg -O2 -gencode arch=compute_30,code=sm_30 -odir "" -M -o "$(@:%.o=%.d)" "$<"
+	/usr/local/cuda-5.5/bin/nvcc --compile -DGL_GLEXT_PROTOTYPES -G -O2 -g -gencode arch=compute_30,code=compute_30 -gencode arch=compute_30,code=sm_30 -lineinfo -pg  -x cu -o  "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 
