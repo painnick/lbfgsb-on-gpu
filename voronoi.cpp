@@ -83,18 +83,6 @@ void DrawSites(bool FinalDrawSite, real* x, const cudaStream_t& stream)
 	glPointSize(1);
 
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB, vboId);
-/*
-	GLvoid* pointer = glMapBufferARB(GL_ARRAY_BUFFER_ARB, GL_WRITE_ONLY_ARB);
-
-	//memcpy(pointer, site_list, sizeof(SiteType) * point_num);
-	VertexSiteType* sitelist = (VertexSiteType*)pointer;
-	for (i=0; i<site_num; i++)
-	{
-		sitelist[i].x = (x[i * 2] + 1.0) * 0.5 * (screenwidth-1) + 1;
-		sitelist[i].y = (x[i * 2 + 1] + 1.0) * 0.5 * (screenheight-1) + 1;
-	}
-
-	glUnmapBufferARB(GL_ARRAY_BUFFER_ARB);*/
 
 	ConvertSites(x, grVbo, point_num * 2, screenwidth, stream);
 	
@@ -113,33 +101,12 @@ void DrawSites(bool FinalDrawSite, real* x, const cudaStream_t& stream)
 	glDisableClientState(GL_VERTEX_ARRAY);
 
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
-/*
-
-
-	glBegin(GL_POINTS);
-	for (i=0; i<site_num; i++)
-	{
-		glColor4fv(site_list[i].color);
-		glVertex2f(site_list[i].vertices[0].x, site_list[i].vertices[0].y);
-	}
-	glEnd();*/
 }
 
 void funcgrad(real* x, real& f, real* g, const cudaStream_t& stream)
 {
 	int i,j;
 	get_timestamp(start_time_func);
-/*
-	for (i=0; i<site_num; i++)
-	{
-		site_list[i].vertices[0].x = (x[i * 2] + 1.0) * 0.5 * (screenwidth-1) + 1;
-		site_list[i].vertices[0].y = (x[i * 2 + 1] + 1.0) * 0.5 * (screenheight-1) + 1;
-	}*/
-
-
-
-
-
 
 	//////////////////////////////////////////////
 	// First pass - Render the initial sites    //
@@ -174,31 +141,6 @@ void funcgrad(real* x, real& f, real* g, const cudaStream_t& stream)
 	DrawSites(false, x, stream);
 
 	glReadBuffer(fbo_attachments[0]);
-	//imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
-
-	//if (numIter==109)
-	//{
-	//	GLubyte *buffer_screen = new GLubyte[screenwidth*screenheight*4];
-	//	char rawname[40];
-	//	glReadPixels(1,1,screenwidth,screenheight,GL_RGBA,GL_UNSIGNED_BYTE,buffer_screen);
-	//	strcpy(rawname, "a.raw");
-	//	std::ofstream myrawfile(rawname, std::ios::binary);
-	//	for (j=screenheight-1; j>=0; j--)
-	//		for (i=0; i<screenwidth; i++)
-	//		{
-	//			GLubyte r, g, b, value;
-	//			r = (unsigned char) buffer_screen[(j*screenwidth+i)*4];
-	//			g = (unsigned char) buffer_screen[(j*screenwidth+i)*4+1];
-	//			b = (unsigned char) buffer_screen[(j*screenwidth+i)*4+2];
-	//			if (r>0 || g>0 || b>0)
-	//				value = 0;
-	//			else
-	//				value = 255;
-	//			myrawfile << value << value << value;
-	//		}
-	//	myrawfile.close();
-	//	delete buffer_screen;
-	//}
 
 	Current_Buffer = 1;
 
@@ -256,7 +198,6 @@ void funcgrad(real* x, real& f, real* g, const cudaStream_t& stream)
 			glVertex2f(float(screenwidth+1), 1.0);
 		glEnd();
 		glReadBuffer(fbo_attachments[Current_Buffer]);
-		//imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
 
 		if (steplength==1 && PassesBeforeJFA)
 		{
@@ -274,7 +215,6 @@ void funcgrad(real* x, real& f, real* g, const cudaStream_t& stream)
 		}
 		Current_Buffer = 1-Current_Buffer;
 	}
-	//imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
 
 #ifdef DEBUG_TIME
 	glFinish();
@@ -311,29 +251,6 @@ void funcgrad(real* x, real& f, real* g, const cudaStream_t& stream)
 	glBlendFunc(GL_ONE, GL_ONE);
 	glCallList(ScreenPointsList);
 	glDisable(GL_BLEND);
-/*
-
-	cutilSafeCall(cudaGraphicsMapResources(1, &grSite, 0));
-	cudaArray *in_array; 
-	cutilSafeCall(cudaGraphicsSubResourceGetMappedArray(&in_array, grSite, 0, 0));
-	
-	cutilSafeCall(cudaMemcpy2DFromArray(pReadBackValues, screenwidth * sizeof(float) * 4, in_array, sizeof(float) * 4, 1, screenwidth * sizeof(float) * 4, iSiteTextureHeight, cudaMemcpyDeviceToHost));
-
-	cutilSafeCall(cudaGraphicsUnmapResources(1, &grSite, 0));
-/ *
-	glReadBuffer(fbo_attachments[0]);
-	//imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
-	glReadPixels(1, 1, screenwidth, iSiteTextureHeight, GL_RGBA, GL_FLOAT, pReadBackValues);
-* /
-
-
-	f = 0;
-	for (i=0; i<site_num; i++)
-	{
-		f += pReadBackValues[i * 4 + 2];
-		g[i * 2] = 2 * pReadBackValues[i * 4]/ * /pReadBackValues[i*4+3]* /;
-		g[i * 2 + 1] = 2 * pReadBackValues[i * 4 + 1]/ * /pReadBackValues[i*4+3]* /;
-	}*/
 
 	Energyf(grSite, g, f_tb_dev, screenwidth, iSiteTextureHeight, site_num, stream);
 
@@ -383,25 +300,6 @@ void funcgrad(real* x, real& f, real* g, const cudaStream_t& stream)
 		{
 			bNewIteration = false;
 			glReadBuffer(fbo_attachments[2]);
-			//imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
-
-			//if (numIter==109)
-			//{
-			//	GLubyte *buffer_screen = new GLubyte[screenwidth*screenheight*4];
-			//	char rawname[40];
-			//	glReadPixels(1,1,screenwidth,screenheight,GL_RGBA,GL_UNSIGNED_BYTE,buffer_screen);
-			//	strcpy(rawname, "a.raw");
-			//	std::ofstream myrawfile(rawname, std::ios::binary);
-			//	for (j=screenheight-1; j>=0; j--)
-			//		for (i=0; i<screenwidth; i++)
-			//		{
-			//			myrawfile << (unsigned char) buffer_screen[(j*screenwidth+i)*4];
-			//			myrawfile << (unsigned char) buffer_screen[(j*screenwidth+i)*4+1];
-			//			myrawfile << (unsigned char) buffer_screen[(j*screenwidth+i)*4+2];
-			//		}
-			//	myrawfile.close();
-			//	delete buffer_screen;
-			//}
 		}
 
 		Current_Buffer = 1-Current_Buffer;
@@ -438,20 +336,6 @@ real BFGSOptimization()
 	memAllocHost<real>(&f_tb_host, &f_tb_dev, 1);
 
 	InitSites(x, (float*)site_list_dev, sizeof(SiteType) / sizeof(float), nbd, l, u, site_num * 2, screenwidth);
-
-	//lbfgsbcuda::CheckBuffer(x, site_num * 2, site_num * 2);
-	/*
-	real a1 = 1 / real(screenwidth - 1) * 2.0;
-	real a2 = -a1 - 1.0;
-	for (int i = 0; i < site_num; i++)
-	{
-		x[i * 2] = site_list[i].vertices[0].x * a1 + a2;
-		x[i * 2 + 1] = site_list[i].vertices[0].y * a1 + a2;
-		nbd[i * 2] = nbd[i * 2 + 1] = 2;
-		l[i * 2] = l[i * 2 + 1] = -1.0;
-		u[i * 2] = u[i * 2 + 1] = 1.0;
-	}
-*/
 
 	printf("Start optimization...");
 	get_timestamp(start_time);
@@ -501,8 +385,6 @@ real DrawVoronoi(real* xx)
 
 	GLfloat *buffer_screen = new GLfloat[screenwidth*screenheight*4];
 
-	//FILE *site_file = fopen("result-uniform-CPU.txt", "r");
-
 #ifdef DEBUG_TIME
 	total_time = 0;
 	get_timestamp(start_time);
@@ -540,7 +422,6 @@ real DrawVoronoi(real* xx)
 	DrawSites(false, xx, NULL);
 
 	glReadBuffer(fbo_attachments[0]);
-	//imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
 
 	Current_Buffer = 1;
 
@@ -600,7 +481,6 @@ real DrawVoronoi(real* xx)
 			glVertex2f(float(screenwidth+1), 1.0);
 			glEnd();
 			glReadBuffer(fbo_attachments[Current_Buffer]);
-			//imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
 
 			if (steplength==1 && PassesBeforeJFA)
 			{
@@ -618,7 +498,6 @@ real DrawVoronoi(real* xx)
 			}
 			Current_Buffer = 1-Current_Buffer;
 		}
-		//imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
 		glReadPixels(1,1,screenwidth,screenheight,GL_RGBA,GL_FLOAT,buffer_screen);
 
 #ifdef DEBUG_TIME
@@ -656,7 +535,6 @@ real DrawVoronoi(real* xx)
 		glEnd();
 
 		glReadBuffer(fbo_attachments[0]);
-		//imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
 
 		Current_Energy_Buffer = 1-Current_Energy_Buffer;
 
@@ -690,7 +568,6 @@ real DrawVoronoi(real* xx)
 			glEnd();
 
 			glReadBuffer(fbo_attachments[0]);
-			//imdebugPixelsf(0, 0, GIMwidth+2, GIMheight+2, GL_RGBA);
 
 			if (quad_size>1)
 			{
@@ -710,49 +587,6 @@ real DrawVoronoi(real* xx)
 #ifdef DEBUG_TIME
 		get_timestamp(start_time);
 #endif
-/*
-		///////////////////////////////////
-		// Test pass, Display the result //
-		///////////////////////////////////
-		cgGLBindProgram(VP_FinalRender);
-		cgGLBindProgram(FP_FinalRender);
-
-		glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, fbo_attachments[2], GL_RENDERBUFFER_EXT, RB_object);
-		CheckFramebufferStatus();
-		glDrawBuffer(fbo_attachments[2]);
-
-		if (FP_FinalRender_Size != NULL)
-			cgSetParameter2f(FP_FinalRender_Size, screenwidth, screenheight);
-
-		glActiveTextureARB(GL_TEXTURE0_ARB);
-		glBindTexture(GL_TEXTURE_RECTANGLE_NV, Processed_Texture[1-Current_Buffer]);
-		glActiveTextureARB(GL_TEXTURE2_ARB);
-		glBindTexture(GL_TEXTURE_RECTANGLE_NV, Color_Texture);
-
-		glBegin(GL_QUADS);
-		glVertex2f(1.0, 1.0);
-		glVertex2f(1.0, float(screenheight+1));
-		glVertex2f(float(screenwidth+1), float(screenheight+1));
-		glVertex2f(float(screenwidth+1), 1.0);
-		glEnd();
-
-		glReadBuffer(fbo_attachments[2]);*/
-		//imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
-/*
-		GLubyte *buffer_screen = new GLubyte[screenwidth*screenheight*4];
-		char rawname[40];
-		glReadPixels(1,1,screenwidth,screenheight,GL_RGBA,GL_UNSIGNED_BYTE,buffer_screen);
-		strcpy(rawname, "a.raw");
-		std::ofstream myrawfile(rawname, std::ios::binary);
-		for (j=screenheight-1; j>=0; j--)
-			for (i=0; i<screenwidth; i++)
-			{
-				myrawfile << (unsigned char) buffer_screen[(j*screenwidth+i)*4];
-				myrawfile << (unsigned char) buffer_screen[(j*screenwidth+i)*4+1];
-				myrawfile << (unsigned char) buffer_screen[(j*screenwidth+i)*4+2];
-			}
-		myrawfile.close();
-		delete buffer_screen;*/
 
 #ifdef DEBUG_TIME
 		get_timestamp(end_time);
@@ -792,20 +626,6 @@ real DrawVoronoi(real* xx)
 				glVertex2f(i+1.5, j+1.5);
 		glEnd();
 		glDisable(GL_BLEND);
-
-/*
-		glReadBuffer(buffers[0]);
-		float *tempTest = new float[screenwidth*10*4];
-		glReadPixels(1, 1, screenwidth, 10, GL_RGBA, GL_FLOAT, tempTest);
-		for (int index=0; index<site_num; index++)
-		{
-			if (tempTest[index*4+3]<=0)
-			{
-				imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
-				printf("Error! Empty VC found!\n");
-				exit(0);
-			}
-		}*/
 
 		Current_Buffer = 1-Current_Buffer;
 
@@ -858,7 +678,6 @@ real DrawVoronoi(real* xx)
 		glDepthMask(GL_TRUE);
 
 		glReadBuffer(fbo_attachments[2]);
-		//imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
 
 		do{
 			glGetQueryObjectivARB(occlusion_query, GL_QUERY_RESULT_AVAILABLE_ARB, &oq_available);
@@ -920,7 +739,6 @@ real DrawVoronoi(real* xx)
 		glEnd();
 
 		glReadBuffer(fbo_attachments[Current_Buffer]);
-		//imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
 
 		Current_Buffer = 1-Current_Buffer;
 #ifdef DEBUG_TIME
@@ -1096,7 +914,6 @@ real DrawVoronoi(real* xx)
 		screenheight, 0, GL_RGBA, GL_UNSIGNED_BYTE, ColorTexImage);
 
 	delete ColorTexImage;
-	//imdebugTexImagef(GL_TEXTURE_RECTANGLE_NV, Color_Texture, GL_R
 #endif
 	delete [] buffer_screen;
 	delete [] bOnBoundary;
@@ -1109,9 +926,6 @@ real DrawVoronoi(real* xx)
 	// Last pass, Display the result //
 	///////////////////////////////////
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);    
-// 	glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, fbo_attachments[2], GL_RENDERBUFFER_EXT, RB_object);
-// 	CheckFramebufferStatus();
-// 	glDrawBuffer(fbo_attachments[2]);
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
@@ -1139,34 +953,14 @@ real DrawVoronoi(real* xx)
 	glVertex2f(float(screenwidth), float(screenheight));
 	glVertex2f(float(screenwidth), 0.0);
 	glEnd();
-/*	glReadBuffer(fbo_attachments[2]);*/
-	//imdebugPixelsf(0, 0, screenwidth, screenheight, GL_RGBA);
-// 	GLubyte *buffer_raw = new GLubyte[screenwidth*screenheight*4];
-// 	glReadPixels(0,0,screenwidth,screenheight,GL_RGBA,GL_UNSIGNED_BYTE,buffer_raw);
-// 	char rawname[40];
-// 
-// 	strcpy(rawname, "CVD.raw");
-// 
-// 	std::ofstream myrawfile(rawname, std::ios::binary);
-// 	for (j=screenheight-1; j>=0; j--)
-// 		for (i=0; i<screenwidth; i++)
-// 		{
-// 			myrawfile << (unsigned char) buffer_raw[(j*screenwidth+i)*4];
-// 			myrawfile << (unsigned char) buffer_raw[(j*screenwidth+i)*4+1];
-// 			myrawfile << (unsigned char) buffer_raw[(j*screenwidth+i)*4+2];
-// 		}
-// 	myrawfile.close();
-// 	delete buffer_raw;
 
 	cgGLDisableProfile(VertexProfile);
 	cgGLDisableProfile(FragmentProfile);
 
-/*
-	if (site_visible)
-	{
-		DrawSites(true);
-	}*/
-
+//	if (site_visible)
+//	{
+//		DrawSites(true);
+//	}
 
 	return fEnergy;
 }
