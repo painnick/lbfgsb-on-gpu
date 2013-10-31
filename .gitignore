@@ -15,3 +15,4 @@
 # etc
 *.d
 Default/*.cg
+/voronoi.cpp

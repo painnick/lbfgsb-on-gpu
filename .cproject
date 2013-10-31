@@ -31,6 +31,8 @@
 								<option id="nvcc.compiler.option.level.1395664525" name="Generate host debug information (-g)" superClass="nvcc.compiler.option.level" value="true" valueType="boolean"/>
 								<option id="nvcc.compiler.option.lineinfo.1945077176" name="Generate line-number information for device code (-lineinfo)" superClass="nvcc.compiler.option.lineinfo" value="true" valueType="boolean"/>
 								<option id="nvcc.compiler.option.gprof.957247240" name="Generate gprof information (-pg)" superClass="nvcc.compiler.option.gprof" value="true" valueType="boolean"/>
+								<option id="nvcc.compiler.optimization.level.884139051" superClass="nvcc.compiler.optimization.level" value="nvcc.compiler.optimization.level.most" valueType="enumerated"/>
+								<option id="nvcc.compiler.usefastmath.59339301" superClass="nvcc.compiler.usefastmath" value="true" valueType="boolean"/>
 								<inputType id="nvcc.compiler.input.cu.1028919022" superClass="nvcc.compiler.input.cu"/>
 								<inputType id="nvcc.compiler.input.cpp.1483832614" superClass="nvcc.compiler.input.cpp"/>
 								<inputType id="nvcc.compiler.input.c.1311102600" superClass="nvcc.compiler.input.c"/>
@@ -62,7 +64,6 @@
 				<editor-arch major="3" minor="0"/>
 				<executable>
 					<sass major="3" minor="0"/>
-					<ptx major="3" minor="0"/>
 				</executable>
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>

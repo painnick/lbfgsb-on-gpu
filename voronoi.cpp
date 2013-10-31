@@ -78,9 +78,6 @@ void CheckFramebufferStatus()
 
 void DrawSites(bool FinalDrawSite, real* x, const cudaStream_t& stream)
 {
-	int i, j;
-	int shift;
-
 	glPointSize(1);
 
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB, vboId);
@@ -286,6 +283,8 @@ void funcgrad(real* x, real& f, real* g, const cudaStream_t& stream)
 
 real BFGSOptimization()
 {
+	printf("Before init sites(site_num=%d).\n", site_num);
+
 	// Use L-BFGS method to compute new sites
 	const real epsg = EPSG;
 	const real epsf = EPSF;
@@ -878,12 +877,17 @@ void Display(void)
 {
 	static real fEnergy = 1e20;
 	static real fEnergyBase = 1e20;
-	static bool isFirst = true;
-	static real t0 = 0;
-	static real tk = 0;
+	bool isFirst = true;
+	real t0 = 0;
+	real tk = 0;
 
-	static real k = 0;
-	static real K = 1;
+	real k = 0;
+	real K = 1;
+
+	if(bReCompute)
+		printf("Recompute\n");
+	else
+		printf("Do not compute\n");
 
 	while (bReCompute && k < K)
 	{
@@ -948,14 +952,12 @@ void Keyboard(unsigned char key, int x, int y)
 	{
 	case '.':
 		{
-			point_num++;
+			point_num+=100;
+			site_num = point_num;
 
-			if (site_list)
-			{
-				cudaFreeHost(site_list);
-			}
-			site_num++;
-			InitializeSites(point_num, line_num, nurbs_num);
+			DestroySites();
+			InitializeSites(point_num);
+
 			glutPostRedisplay();
 			break;
 		}
@@ -970,12 +972,11 @@ void Keyboard(unsigned char key, int x, int y)
 
 			if (decreased)
 			{
-				if (site_list)
-				{
-					cudaFreeHost(site_list);
-				}
-				site_num--;
-				InitializeSites(point_num, line_num, nurbs_num);
+				site_num = point_num;
+
+				DestroySites();
+				InitializeSites(point_num);
+
 				glutPostRedisplay();
 			}
 			break;
@@ -1101,22 +1102,29 @@ void CgErrorCallback(void)
 	}
 }
 
-void InitializeSites(int point_num, int line_num, int nurbs_num)
+void InitializeSites(int point_num)
 {
 	int i, j, index;
 	int v_per_site;
 	VertexSiteType v;
 
-	memAllocHost<SiteType>(&site_list, &site_list_dev, point_num+line_num+nurbs_num);
-	site_list_x = new float[(point_num+line_num+nurbs_num) * 2];
-	site_list_x_bar = new float[(point_num+line_num+nurbs_num) * 2];
-	site_perturb_step = 0.5f / sqrtf(point_num+line_num+nurbs_num);
+	additional_passes = 0;
+	additional_passes_before = 0;
 
-	bool *FlagArray = new bool[screenwidth*screenwidth];
+	iSiteTextureHeight = site_num/screenwidth+1;
+
+	bReCompute = true;
+
+	memAllocHost<SiteType>(&site_list, &site_list_dev, point_num);
+	site_list_x = new float[(point_num) * 2];
+	site_list_x_bar = new float[(point_num) * 2];
+	site_perturb_step = 0.5f / sqrtf(point_num);
+
+	bool *FlagArray = new bool[screenwidth*screenheight];
 	for (i=0; i<screenwidth*screenheight; i++)
 		FlagArray[i] = false;
 
-	for (i=0; i<point_num+line_num+nurbs_num; i++)
+	for (i=0; i<point_num; i++)
 	{
 		SiteType s;
 
@@ -1162,7 +1170,7 @@ void InitializeSites(int point_num, int line_num, int nurbs_num)
 		site_list[i] = s;
 	}
 	delete FlagArray;
-	GLubyte *ColorTexImage = new GLubyte[screenwidth*screenwidth*4];
+	GLubyte *ColorTexImage = new GLubyte[screenwidth*screenheight*4];
 	for (i=0; i<screenheight; i++)
 		for (j=0; j<screenwidth; j++)
 		{
@@ -1215,6 +1223,18 @@ void InitializeSites(int point_num, int line_num, int nurbs_num)
 		sitelist[i * 4 + 3] = site_list[i].color[3];
 	}
 	glUnmapBufferARB(GL_ARRAY_BUFFER_ARB);
+}
+
+void DestroySites()
+{
+	glDeleteBuffersARB(1, &vboId);
+	glDeleteBuffersARB(1, &colorboId);
+	cudaGraphicsUnregisterResource(grSite);
+	cudaGraphicsUnregisterResource(grVbo);
+
+	delete[] site_list_x;
+	delete[] site_list_x_bar;
+	cudaFreeHost(site_list);
 }
 
 void InitCg()
@@ -1423,6 +1443,17 @@ void InitCg()
 	}
 }
 
+void DestroyCg()
+{
+	cgDestroyProgram(VP_DrawSites);
+	cgDestroyProgram(FP_DrawSites);
+	cgDestroyProgram(VP_Flood);
+	cgDestroyProgram(FP_Flood);
+	cgDestroyProgram(VP_FinalRender);
+	cgDestroyProgram(FP_FinalRender);
+	cgDestroyContext(Context);
+}
+
 int main(int argc, char *argv[])
 {
 	point_num = 8000;
@@ -1450,43 +1481,20 @@ int main(int argc, char *argv[])
 	if (argc==3)
 		bShowTestResults = atoi(argv[2]);
 
-	line_num = 0;
-	nurbs_num = 0;
-	site_num = point_num + line_num + nurbs_num;
-	mode = 1; // mode = point sites
-	speed = 3.0f;
-	additional_passes = 0;
-	additional_passes_before = 0;
-	bReCompute = true;
+	site_num = point_num;
 
 	InitializeGlut(&argc, argv);
 
 	srand((unsigned)time(NULL));
-	controlpoints = (float *)malloc(sizeof(float)*12);
-	InitializeSites(point_num, line_num, nurbs_num);
 
-	iSiteTextureHeight = site_num/screenwidth+1;
-	pReadBackValues = new float[screenwidth*iSiteTextureHeight*4];
+	InitializeSites(point_num);
 
 	glutMainLoop();
 	
-	glDeleteBuffersARB(1, &vboId);
-	glDeleteBuffersARB(1, &colorboId);
-	cudaGraphicsUnregisterResource(grSite);
-	cudaGraphicsUnregisterResource(grVbo);
+	DestroySites();
 
-	cgDestroyProgram(VP_DrawSites);
-	cgDestroyProgram(FP_DrawSites);
-	cgDestroyProgram(VP_Flood);
-	cgDestroyProgram(FP_Flood);
-	cgDestroyProgram(VP_FinalRender);
-	cgDestroyProgram(FP_FinalRender);
-	cgDestroyContext(Context);
+	DestroyCg();
 	
-	delete[] site_list_x;
-	delete[] site_list_x_bar;
-	cudaFreeHost(site_list);
-
 	cublasDestroy_v2(cublasHd);
 
 	cudaDeviceReset();
