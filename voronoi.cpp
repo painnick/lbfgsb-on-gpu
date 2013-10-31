@@ -17,6 +17,7 @@ extern void Energyf(cudaGraphicsResource_t grSite, real* g, real* f, int w, int 
 extern void ConvertSites(real* x, cudaGraphicsResource_t gr, int nsite, int screenw, const cudaStream_t& stream);
 extern void InitSites(real* x, float* init_sites, int stride, int* nbd, real* l, real* u, int nsite, int screenw);
 
+// Temperary array for site_list
 float* site_list_x = NULL;
 float* site_list_x_bar = NULL;
 float site_perturb_step = 0;
@@ -103,6 +104,7 @@ void DrawSites(bool FinalDrawSite, real* x, const cudaStream_t& stream)
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
 }
 
+// Function of L-BFGS-B
 void funcgrad(real* x, real& f, real* g, const cudaStream_t& stream)
 {
 	int i,j;
@@ -144,17 +146,6 @@ void funcgrad(real* x, real& f, real* g, const cudaStream_t& stream)
 
 	Current_Buffer = 1;
 
-#ifdef DEBUG_TIME
-	glFinish();
-	get_timestamp(end_time);
-	elapsed_time = (end_time-start_time);
-	total_time += elapsed_time;
-	printf("Step 1 time: %f\n", elapsed_time);
-#endif
-
-#ifdef DEBUG_TIME
-	get_timestamp(start_time);
-#endif
 	/////////////////////////////////////
 	// Second pass - Flood the sites   //
 	/////////////////////////////////////
@@ -216,16 +207,6 @@ void funcgrad(real* x, real& f, real* g, const cudaStream_t& stream)
 		Current_Buffer = 1-Current_Buffer;
 	}
 
-#ifdef DEBUG_TIME
-	glFinish();
-	get_timestamp(end_time);
-	elapsed_time = (end_time-start_time);
-	total_time += elapsed_time;
-	printf("Step 2 time: %f\n", elapsed_time);
-#endif
-#ifdef DEBUG_TIME
-	get_timestamp(start_time);
-#endif
 	////////////////////////////////
 	// Third pass, Compute energy //
 	////////////////////////////////
@@ -255,16 +236,7 @@ void funcgrad(real* x, real& f, real* g, const cudaStream_t& stream)
 	Energyf(grSite, g, f_tb_dev, screenwidth, iSiteTextureHeight, site_num, stream);
 
 	lbfgsbcuda::CheckBuffer(g, site_num * 2, site_num * 2);
-#ifdef DEBUG_TIME
-	glFinish();
-	get_timestamp(end_time);
-	elapsed_time = (end_time-start_time);
-	total_time += elapsed_time;
-	printf("Step Scatter time: %f\n", elapsed_time);
-#endif
-#ifdef DEBUG_TIME
-	get_timestamp(start_time);
-#endif
+
 	if (bShowTestResults)
 	{
 		///////////////////////////////////
@@ -385,10 +357,6 @@ real DrawVoronoi(real* xx)
 
 	GLfloat *buffer_screen = new GLfloat[screenwidth*screenheight*4];
 
-#ifdef DEBUG_TIME
-	total_time = 0;
-	get_timestamp(start_time);
-#endif
 	//////////////////////////////////////////////
 	// First pass - Render the initial sites    //
 	//////////////////////////////////////////////
@@ -425,19 +393,9 @@ real DrawVoronoi(real* xx)
 
 	Current_Buffer = 1;
 
-#ifdef DEBUG_TIME
-	get_timestamp(end_time);
-	elapsed_time = (end_time-start_time);
-	total_time += elapsed_time;
-	printf("Step 1 time: %f\n", elapsed_time);
-#endif
-
 	bool Converged = false;
 	while (!Converged)
 	{
-#ifdef DEBUG_TIME
-		get_timestamp(start_time);
-#endif
 		/////////////////////////////////////
 		// Second pass - Flood the sites   //
 		/////////////////////////////////////
@@ -500,12 +458,6 @@ real DrawVoronoi(real* xx)
 		}
 		glReadPixels(1,1,screenwidth,screenheight,GL_RGBA,GL_FLOAT,buffer_screen);
 
-#ifdef DEBUG_TIME
-		get_timestamp(end_time);
-		elapsed_time = (end_time-start_time);
-		total_time += elapsed_time;
-		printf("Step 2 time: %f\n", elapsed_time);
-#endif
 		///////////////////////////////
 		// Test pass, Compute energy //
 		///////////////////////////////
@@ -584,19 +536,6 @@ real DrawVoronoi(real* xx)
 		printf("Energy: %f\n", total_sum[0]);
 		fEnergy = total_sum[0];
 
-#ifdef DEBUG_TIME
-		get_timestamp(start_time);
-#endif
-
-#ifdef DEBUG_TIME
-		get_timestamp(end_time);
-		elapsed_time = (end_time-start_time);
-		total_time += elapsed_time;
-		printf("Step test time: %f\n", elapsed_time);
-#endif
-#ifdef DEBUG_TIME
-		get_timestamp(start_time);
-#endif
 		//////////////////////////////////////////
 		// Third pass - Scatter points to sites //
 		//////////////////////////////////////////
@@ -629,15 +568,6 @@ real DrawVoronoi(real* xx)
 
 		Current_Buffer = 1-Current_Buffer;
 
-#ifdef DEBUG_TIME
-		get_timestamp(end_time);
-		elapsed_time = (end_time-start_time);
-		total_time += elapsed_time;
-		printf("Step 3 time: %f\n", elapsed_time);
-#endif
-#ifdef DEBUG_TIME
-		get_timestamp(start_time);
-#endif
 		///////////////////////////////////////
 		// Fourth pass - Test stop condition //
 		///////////////////////////////////////
@@ -694,22 +624,10 @@ real DrawVoronoi(real* xx)
 
 		if (Converged)
 		{
-#ifdef DEBUG_TIME
-			printf("Total time: %f\n", total_time);
-#endif
 			//exit(0);
 			break;
 		}
 
-#ifdef DEBUG_TIME
-		get_timestamp(end_time);
-		elapsed_time = (end_time-start_time);
-		total_time += elapsed_time;
-		printf("Step 4 time: %f\n", elapsed_time);
-#endif
-#ifdef DEBUG_TIME
-		get_timestamp(start_time);
-#endif
 		//////////////////////////////////////////////
 		// Fifth pass - Draw sites at new positions //
 		//////////////////////////////////////////////
@@ -741,12 +659,6 @@ real DrawVoronoi(real* xx)
 		glReadBuffer(fbo_attachments[Current_Buffer]);
 
 		Current_Buffer = 1-Current_Buffer;
-#ifdef DEBUG_TIME
-		get_timestamp(end_time);
-		elapsed_time = (end_time-start_time);
-		total_time += elapsed_time;
-		printf("Step 5 time: %f\n", elapsed_time);
-#endif
 	}
 
 	cgGLDisableProfile(VertexProfile);
@@ -957,19 +869,13 @@ real DrawVoronoi(real* xx)
 	cgGLDisableProfile(VertexProfile);
 	cgGLDisableProfile(FragmentProfile);
 
-//	if (site_visible)
-//	{
-//		DrawSites(true);
-//	}
+	DrawSites(true, xx, NULL);
 
 	return fEnergy;
 }
 
 void Display(void)
 {
-	if (testFPS && frame_num == 0)
-		get_timestamp(start_time);
-	
 	static real fEnergy = 1e20;
 	static real fEnergyBase = 1e20;
 	static bool isFirst = true;
@@ -1010,15 +916,10 @@ void Display(void)
 			//XBase <- X*
 			CopySite(site_list_x_bar, site_list, point_num);
 			fEnergyBase = fStar;
-			FILE *site_file = fopen("sites_result.txt", "w");
-			for(int i = 0; i < point_num; i++) {
-				fprintf(site_file, "%f %f\n", (site_list[i].vertices[0].x - 1.0) / (screenwidth - 1.0), (site_list[i].vertices[0].y - 1.0) / (screenheight - 1.0));
-			}
-			fclose(site_file);
 			printf("Base Updated!\n");
 		}
 		//Perturb X -> X*
-		k = k + 1.0;
+		k = k + 0.1;
 		for(int i = 0; i < point_num * 2; i++) {
 			site_list_x[i] = site_list_x[i] + 
 				((real)rand() / (real)RAND_MAX * 2.0 - 1.0) * 
@@ -1036,15 +937,6 @@ void Display(void)
 
 	glFinish();
 
-	frame_num++;
-	if (testFPS && frame_num == 50)
-	{
-		frame_num = 0;
-		get_timestamp(end_time);
-		elapsed_time = (end_time-start_time)/50.0;
-		printf("FPS: %f\n", 1000.0/elapsed_time);
-	}
-
 	glutSwapBuffers();
 }
 
@@ -1054,58 +946,12 @@ void Keyboard(unsigned char key, int x, int y)
 
 	switch (key)
 	{
-	case '1':
-		{
-			mode = 1; // site = point
-			printf("mode change to point.\n");
-			break;
-		}
-	case '2':
-		{
-			mode = 2; // site = line
-			printf("mode change to line.\n");
-			break;
-		}
-	case '3':
-		{
-			mode = 3; // site = nurbs
-			printf("mode change to NURBS.\n");
-			break;
-		}
-	case '`':
-		{
-			site_visible = !site_visible;
-			glutPostRedisplay();
-			break;
-		}
 	case '.':
 		{
-			switch (mode)
-			{
-			case 1:
-				{
-					point_num++;
-					break;
-				}
-			case 2:
-				{
-					line_num++;
-					break;
-				}
-			case 3:
-				{
-					nurbs_num++;
-					break;
-				}
-			}
+			point_num++;
+
 			if (site_list)
 			{
-/*
-				for (i=0; i<site_num; i++)
-				{
-					if (site_list[i].vertices)
-						delete [] site_list[i].vertices;
-				}*/
 				cudaFreeHost(site_list);
 			}
 			site_num++;
@@ -1116,46 +962,16 @@ void Keyboard(unsigned char key, int x, int y)
 	case ',':
 		{
 			bool decreased = false;
-			switch (mode)
+			if (point_num>0)
 			{
-			case 1:
-				{
-					if (point_num>0)
-					{
-						point_num--;
-						decreased = true;
-					}
-					break;
-				}
-			case 2:
-				{
-					if (line_num>0)
-					{
-						line_num--;
-						decreased = true;
-					}
-					break;
-				}
-			case 3:
-				{
-					if (nurbs_num>0)
-					{
-						nurbs_num--;
-						decreased = true;
-					}
-					break;
-				}
+				point_num--;
+				decreased = true;
 			}
+
 			if (decreased)
 			{
 				if (site_list)
 				{
-/*
-					for (i=0; i<site_num; i++)
-					{
-						if (site_list[i].vertices)
-							delete [] site_list[i].vertices;
-					}*/
 					cudaFreeHost(site_list);
 				}
 				site_num--;
@@ -1164,28 +980,8 @@ void Keyboard(unsigned char key, int x, int y)
 			}
 			break;
 		}
-	case 't':
-		{
-			frame_num = 0;
-			testFPS = !testFPS;
-			glutPostRedisplay();
-			break;
-		}
-	case '\\':
-		{
-			animation = !animation;
-			glutPostRedisplay();
-			break;
-		}
-	case 's':
-		{
-			output = !output;
-			glutPostRedisplay();
-			break;
-		}
 	case 'q':
 		{
-			fclose(f_result);
 			exit(0);
 			break;
 		}
@@ -1316,27 +1112,9 @@ void InitializeSites(int point_num, int line_num, int nurbs_num)
 	site_list_x_bar = new float[(point_num+line_num+nurbs_num) * 2];
 	site_perturb_step = 0.5f / sqrtf(point_num+line_num+nurbs_num);
 
-// 	float *sites_array = new float[site_num*2];
-// 	FILE *site_file = fopen("sites.txt", "r");
-// 	//FILE *site_file = fopen("result-uniform-CPU.txt", "r");
-// 	for (i=0; i<site_num; i++)
-// 	{
-// 		fscanf(site_file, "%f %f\n", &(sites_array[i*2]), &(sites_array[i*2+1]));
-// 	}
-// 	fclose(site_file);
-
-
 	bool *FlagArray = new bool[screenwidth*screenwidth];
 	for (i=0; i<screenwidth*screenheight; i++)
 		FlagArray[i] = false;
-	unsigned d = 123456;//GetTickCount();
-	printf("Seed: %d\n", d);
-	srand(d);
-// 	const unsigned m = (unsigned)(ceilf(logf((point_num+line_num+nurbs_num) * 2) / logf(2.0f)));
-// 	const Mcqmclfsr lfsr(m, Mcqmclfsr::GOOD_PROJECTIONS);
-// 	const int scramble = rand() * (RAND_MAX + 1) + rand();
-// 	unsigned state = 1 << (m - 1);
-// 	const float org = lfsr.next(scramble, &state);
 
 	for (i=0; i<point_num+line_num+nurbs_num; i++)
 	{
@@ -1350,7 +1128,7 @@ void InitializeSites(int point_num, int line_num, int nurbs_num)
 			if (FlagArray[index])
 			{
 				printf("\nDuplicate site found: #%d\n", i);
-				//exit(0);
+
 				v.x = v.x + ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f) * (float)(screenwidth-1);
 				v.y = v.y + ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f) * (float)(screenwidth-1);
 
@@ -1384,7 +1162,6 @@ void InitializeSites(int point_num, int line_num, int nurbs_num)
 		site_list[i] = s;
 	}
 	delete FlagArray;
-/*	delete sites_array;*/
 	GLubyte *ColorTexImage = new GLubyte[screenwidth*screenwidth*4];
 	for (i=0; i<screenheight; i++)
 		for (j=0; j<screenwidth; j++)
@@ -1438,8 +1215,6 @@ void InitializeSites(int point_num, int line_num, int nurbs_num)
 		sitelist[i * 4 + 3] = site_list[i].color[3];
 	}
 	glUnmapBufferARB(GL_ARRAY_BUFFER_ARB);
-
-	//imdebugTexImagef(GL_TEXTURE_RECTANGLE_NV, Color_Texture, GL_RGBA);
 }
 
 void InitCg()
@@ -1684,12 +1459,9 @@ int main(int argc, char *argv[])
 	additional_passes_before = 0;
 	bReCompute = true;
 
-//	screenwidth = screenheight = 2048;
 	InitializeGlut(&argc, argv);
 
 	srand((unsigned)time(NULL));
-	srand(34143214); // standard random seed
-	//srand(8149040);
 	controlpoints = (float *)malloc(sizeof(float)*12);
 	InitializeSites(point_num, line_num, nurbs_num);
 
