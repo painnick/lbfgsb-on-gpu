@@ -11,22 +11,26 @@ All Rights Reserved.
 */
 
 #include <math.h>
-#include <string.h>
-#include <sys/time.h>
 #include <GL/glew.h>
-//#include <GL/wglew.h>
-#include <GL/freeglut.h>
+#include <GL/wglew.h>
 #include <Cg/cg.h>
 #include <Cg/cgGL.h>
-#include <GL/glext.h>
-#include <time.h>
-//#include <imdebug.h>
-//#include <imdebuggl.h>
-#include "L-BFGS/cutil_inline.h"
-//#include <cutil_gl_inline.h>
+
+#ifdef WIN32
+	#include <time.h>
+	#include <GL/glut.h>
+#else
+	#include <string.h>
+	#include <sys/time.h>
+	#include <GL/freeglut.h>
+	#include <GL/glext.h>
+#endif
+
+#include <cutil_inline.h>
 #include <cuda_gl_interop.h>
 
 #include "L-BFGS/lbfgsb.h"
+
 
 #define M_PI 3.14159265358979323846
 
@@ -54,16 +58,24 @@ typedef struct SiteType{
 	float color[4];
 }SiteType;
 
+bool animation = false;
+bool site_visible = false;
+bool testFPS = false;
+bool output = false;
+
 int screenwidth, screenheight;
 int mode;
-int point_num;
+int point_num, line_num, nurbs_num;
 int site_num;
+int frame_num = 0;
+float speed;
 int additional_passes, additional_passes_before;
 bool bReCompute;
 real stpscal;
 
 SiteType *site_list;
 SiteType *site_list_dev;
+float *controlpoints;
 
 GLuint Processed_Texture[2], Site_Texture, Color_Texture, Energy_Texture[2], IndexColor_Texture;
 GLuint FB_objects, RB_object;
@@ -134,18 +146,18 @@ CGparameter VP_ScatterCentroid_Size;
 
 /*********************************************/
 void CheckFramebufferStatus();
-void DrawSites(real* x, const cudaStream_t& stream);
+void DrawSites(real* x, bool FinalDrawSite, const cudaStream_t& stream);
 real BFGSOptimization(void);
 real DrawVoronoi(real* x);
 void Display(void);
 void Keyboard(unsigned char key, int x, int y);
 void InitializeGlut(int *argc, char *argv[]);
+void DestroyGlut();
 void CgErrorCallback(void);
 void UpdateSites();
 void InitializeSites(int point_num);
 void DestroySites();
 void InitCg();
-void DestroyCg();
 
 // Time...
 #ifdef WIN32

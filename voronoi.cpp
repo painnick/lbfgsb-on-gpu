@@ -1090,6 +1090,16 @@ void InitializeGlut(int *argc, char *argv[])
 
 }
 
+void DestroyGlut()
+{
+	cudaGraphicsUnregisterResource(grSite);
+	cudaGraphicsUnregisterResource(grVbo);
+
+	cublasDestroy_v2(cublasHd);
+
+	cudaDeviceReset();
+}
+
 void CgErrorCallback(void)
 {
 	CGerror lastError = cgGetError();
@@ -1229,8 +1239,6 @@ void DestroySites()
 {
 	glDeleteBuffersARB(1, &vboId);
 	glDeleteBuffersARB(1, &colorboId);
-	cudaGraphicsUnregisterResource(grSite);
-	cudaGraphicsUnregisterResource(grVbo);
 
 	delete[] site_list_x;
 	delete[] site_list_x_bar;
@@ -1494,10 +1502,8 @@ int main(int argc, char *argv[])
 	DestroySites();
 
 	DestroyCg();
-	
-	cublasDestroy_v2(cublasHd);
 
-	cudaDeviceReset();
+	DestroyGlut();
 
 	return 0;
 }
