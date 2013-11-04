@@ -76,14 +76,13 @@ void CheckFramebufferStatus()
 
 #define BUFFER_OFFSET(i) ((char*)NULL + (i))
 
-void DrawSites(bool FinalDrawSite, real* x, const cudaStream_t& stream)
+void DrawSites(real* x, const cudaStream_t& stream)
 {
 	glPointSize(1);
 
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB, vboId);
 
 	ConvertSites(x, grVbo, point_num * 2, screenwidth, stream);
-	
 
 	glVertexPointer(2, GL_FLOAT, 0, 0);
 
@@ -137,7 +136,7 @@ void funcgrad(real* x, real& f, real* g, const cudaStream_t& stream)
 	gluOrtho2D(1, screenwidth+1, 1, screenheight+1);
 	glViewport(1, 1, screenwidth, screenheight);
 
-	DrawSites(false, x, stream);
+	DrawSites(x, stream);
 
 	glReadBuffer(fbo_attachments[0]);
 
@@ -386,7 +385,7 @@ real DrawVoronoi(real* xx)
 	gluOrtho2D(1, screenwidth+1, 1, screenheight+1);
 	glViewport(1, 1, screenwidth, screenheight);
 
-	DrawSites(false, xx, NULL);
+	DrawSites(xx, NULL);
 
 	glReadBuffer(fbo_attachments[0]);
 
@@ -868,7 +867,7 @@ real DrawVoronoi(real* xx)
 	cgGLDisableProfile(VertexProfile);
 	cgGLDisableProfile(FragmentProfile);
 
-	DrawSites(true, xx, NULL);
+	DrawSites(xx, NULL);
 
 	return fEnergy;
 }
@@ -950,6 +949,14 @@ void Keyboard(unsigned char key, int x, int y)
 
 	switch (key)
 	{
+	case '0':
+		{
+			DestroySites();
+			InitializeSites(point_num);
+
+			glutPostRedisplay();
+			break;
+		}
 	case '.':
 		{
 			point_num+=100;
@@ -966,7 +973,7 @@ void Keyboard(unsigned char key, int x, int y)
 			bool decreased = false;
 			if (point_num>0)
 			{
-				point_num--;
+				point_num-=100;
 				decreased = true;
 			}
 
@@ -1158,12 +1165,12 @@ void InitializeSites(int point_num)
 					v.x += (float)screenwidth;
 				}
 
-				while(v.y > (float)(screenwidth - 1)) {
-					v.y -= (float)screenwidth;
+				while(v.y > (float)(screenheight - 1)) {
+					v.y -= (float)screenheight;
 				}
 
 				while(v.y < 1.0f) {
-					v.y += (float)screenwidth;
+					v.y += (float)screenheight;
 				}
 			}
 			else
@@ -1488,6 +1495,8 @@ int main(int argc, char *argv[])
 
 	if (argc==3)
 		bShowTestResults = atoi(argv[2]);
+
+	screenheight = screenwidth * 2 / 4;
 
 	site_num = point_num;
 
