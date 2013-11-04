@@ -11,23 +11,24 @@ All Rights Reserved.
 */
 
 #include <math.h>
+#include <time.h>
 #include <GL/glew.h>
-#include <GL/wglew.h>
 #include <Cg/cg.h>
 #include <Cg/cgGL.h>
 
 #ifdef WIN32
-	#include <time.h>
 	#include <GL/glut.h>
+	#include <GL/wglew.h>
 #else
 	#include <string.h>
+	#include <time.h>
 	#include <sys/time.h>
 	#include <GL/freeglut.h>
 	#include <GL/glext.h>
 #endif
 
-#include <cutil_inline.h>
 #include <cuda_gl_interop.h>
+#include "L-BFGS/cutil_inline.h"
 
 #include "L-BFGS/lbfgsb.h"
 
