@@ -1007,6 +1007,7 @@ void InitializeGlut(int *argc, char *argv[])
 	glutDisplayFunc(Display);
 	glutKeyboardFunc(Keyboard);
 
+	// Support mapped pinned allocations
 	cudaSetDeviceFlags(cudaDeviceMapHost);
 
 	cudaGLSetGLDevice(0);
@@ -1016,10 +1017,16 @@ void InitializeGlut(int *argc, char *argv[])
 	glewInit();
 	GLint max_texture_size;
 	glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_texture_size);
+	if(max_texture_size < screenwidth || screenwidth < screenheight) {
+		printf("Max size of texttur(%d) is less than screensize(%d, %d)\n", max_texture_size, screenwidth, screenheight);
+		exit(0);
+	}
 
 	//Create the textures
 	glActiveTextureARB(GL_TEXTURE0_ARB);
 
+	// 처리용 텍스쳐 2장
+	// Q. 왜 2장일까?
 	glGenTextures(2, Processed_Texture);
 	glBindTexture(GL_TEXTURE_RECTANGLE_NV, Processed_Texture[0]);
 	glTexImage2D(GL_TEXTURE_RECTANGLE_NV, 0, GL_RGBA32F_ARB, screenwidth+2, screenheight+2, 0, 
@@ -1037,6 +1044,8 @@ void InitializeGlut(int *argc, char *argv[])
 	glTexParameteri(GL_TEXTURE_RECTANGLE_NV, GL_TEXTURE_WRAP_S, GL_CLAMP);
 	glTexParameteri(GL_TEXTURE_RECTANGLE_NV, GL_TEXTURE_WRAP_T, GL_CLAMP);
 
+	// Site용 텍스쳐
+	// Q. 처리용과 별개인 이유는?
 	glGenTextures(1, &Site_Texture);
 	glBindTexture(GL_TEXTURE_RECTANGLE_NV, Site_Texture);
 	glTexImage2D(GL_TEXTURE_RECTANGLE_NV, 0, GL_RGBA32F_ARB, screenwidth+2, screenheight+2, 0, 
@@ -1046,6 +1055,8 @@ void InitializeGlut(int *argc, char *argv[])
 	glTexParameteri(GL_TEXTURE_RECTANGLE_NV, GL_TEXTURE_WRAP_S, GL_CLAMP);
 	glTexParameteri(GL_TEXTURE_RECTANGLE_NV, GL_TEXTURE_WRAP_T, GL_CLAMP);
 
+	// Registers the texture or renderbuffer object specified by image for access by CUDA.
+	// A handle to the registered object is returned as resource
 	cutilSafeCall(cudaGraphicsGLRegisterImage(&grSite, Site_Texture, 
 		GL_TEXTURE_RECTANGLE_NV, cudaGraphicsMapFlagsReadOnly));
 
@@ -1496,7 +1507,7 @@ int main(int argc, char *argv[])
 	if (argc==3)
 		bShowTestResults = atoi(argv[2]);
 
-	screenheight = screenwidth * 2 / 4;
+	screenheight = screenwidth * 5 / 8;
 
 	site_num = point_num;
 
