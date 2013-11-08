@@ -1060,6 +1060,9 @@ void InitializeGlut(int *argc, char *argv[])
 	cutilSafeCall(cudaGraphicsGLRegisterImage(&grSite, Site_Texture, 
 		GL_TEXTURE_RECTANGLE_NV, cudaGraphicsMapFlagsReadOnly));
 
+	// 에너지용 텍스쳐
+	// 처리용과 동일한 2장
+	// Q. 왜??
 	glGenTextures(2, Energy_Texture);
 	glBindTexture(GL_TEXTURE_RECTANGLE_NV, Energy_Texture[0]);
 	glTexImage2D(GL_TEXTURE_RECTANGLE_NV, 0, GL_RGBA32F_ARB, screenwidth+2, screenheight+2, 0, 
@@ -1077,6 +1080,8 @@ void InitializeGlut(int *argc, char *argv[])
 	glTexParameteri(GL_TEXTURE_RECTANGLE_NV, GL_TEXTURE_WRAP_S, GL_CLAMP);
 	glTexParameteri(GL_TEXTURE_RECTANGLE_NV, GL_TEXTURE_WRAP_T, GL_CLAMP);
 
+	// 인덱스용 텍스쳐
+	// 인덱스를 컬러로 표현
 	glGenTextures(1, &IndexColor_Texture);
 	glBindTexture(GL_TEXTURE_RECTANGLE_NV, IndexColor_Texture);
 	glTexImage2D(GL_TEXTURE_RECTANGLE_NV, 0, GL_RGBA, screenwidth, screenheight, 0, 
@@ -1086,17 +1091,23 @@ void InitializeGlut(int *argc, char *argv[])
 	glTexParameteri(GL_TEXTURE_RECTANGLE_NV, GL_TEXTURE_WRAP_S, GL_CLAMP);
 	glTexParameteri(GL_TEXTURE_RECTANGLE_NV, GL_TEXTURE_WRAP_T, GL_CLAMP);
 
+	// R??? Buffer Object
 	glGenFramebuffersEXT(1, &RB_object);
 	glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, RB_object);
 	glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_RGBA32F_ARB, screenwidth+2, screenheight+2);
 
+	// Frame(?) Buffer Object
 	glGenFramebuffersEXT(1, &FB_objects);
 
+	// ????
+	// NVIDIA 확인이라는 점만 확인
+	// http://developer.download.nvidia.com/opengl/specs/nvOpenGLspecs.pdf‎
 	glGetQueryiv(GL_SAMPLES_PASSED_ARB, GL_QUERY_COUNTER_BITS_ARB, &oq_bitsSupported);
 	glGenQueriesARB(1, &occlusion_query);
 
 	InitCg();
 
+	// 미리 컴파일된 화면 픽셀 목록
 	ScreenPointsList = glGenLists(1);
 	glNewList(ScreenPointsList, GL_COMPILE);
 	glBegin(GL_POINTS);
