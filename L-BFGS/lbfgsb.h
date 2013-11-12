@@ -48,6 +48,9 @@ inline int iAlignUp(int a, int b)
 	return (a % b != 0) ?  (a - a % b + b) : a;
 }
 
+/*
+ * Devie에 메모리 할당
+ */
 template<class T>
 inline int memAlloc(T** ptr, size_t length) {
 	void* ptr_;
@@ -59,9 +62,15 @@ inline int memAlloc(T** ptr, size_t length) {
 		return -1;
 }
 
+/*
+ * Device에서 호출할 수 있는 Host 메모리를 할당.
+ */
 template<class T>
 inline int memAllocHost(T** ptr, T** ptr_dev, size_t length) {
 	void* ptr_;
+	// cudaHostAlloc() : Allocates size bytes of host memory that is page-locked and accessible to the device
+	// cudaHostAllocMapped : Maps the allocation into the CUDA address space.
+	//                       The device pointer to the memory may be obtained by calling cudaHostGetDevicePointer().
 	cudaHostAlloc(&ptr_, length * sizeof(T), cudaHostAllocMapped);
 	if(ptr_dev)
 		cudaHostGetDevicePointer((void**)ptr_dev, ptr_, 0);

@@ -114,14 +114,9 @@ void funcgrad(real* x, real& f, real* g, const cudaStream_t& stream)
 		GL_TEXTURE_RECTANGLE_NV, Processed_Texture[0], 0);
 	CheckFramebufferStatus();
 
-	for (i=0; i<1; i++)
-	{
-		glDrawBuffer(fbo_attachments[i]);
-		glClearColor(-1, -1, -1, -1);
-		glClear(GL_COLOR_BUFFER_BIT);
-	}
-
 	glDrawBuffer(fbo_attachments[0]);
+	glClearColor(-1, -1, -1, -1);
+	glClear(GL_COLOR_BUFFER_BIT);
 
 	cgGLEnableProfile(VertexProfile);
 	cgGLEnableProfile(FragmentProfile);
@@ -305,6 +300,9 @@ real BFGSOptimization()
 	memAlloc<real>(&u, site_num * 2);
 	memAllocHost<real>(&f_tb_host, &f_tb_dev, 1);
 
+	// Kernel이 처리할 수 있도록 site_list를 매핑하는 site_list_dev를 전달.
+	// site_list는 InitializeSites()에서 지정
+	// Device에 할당된 x에 site_list가 복사
 	InitSites(x, (float*)site_list_dev, sizeof(SiteType) / sizeof(float), nbd, l, u, site_num * 2, screenwidth);
 
 	printf("Start optimization...");
@@ -315,9 +313,11 @@ real BFGSOptimization()
 	int	m = 8;
 	if (site_num * 2 < m)
 		m = site_num * 2;
+
 	for (int temp=0; temp<1; temp++)
 	{
 		bNewIteration = true;
+		// 내부적으로 funcgrad()를 호출
 		lbfgsbminimize(site_num*2, m, x, epsg, epsf, epsx, maxits, nbd, l, u, info);
 		//printf("Ending code:%d\n", info);
 	}
@@ -330,6 +330,8 @@ real BFGSOptimization()
 	
 	real f = DrawVoronoi(x);
 
+	// Device에 저장된 x가 실제 이동된 site 정보인 듯
+	// 이를 Host로 복사한 후, site_list에 할당
 	real* x_host = new real[site_num * 2];
 	memCopy(x_host, x, site_num * 2 * sizeof(real), cudaMemcpyDeviceToHost);
 	for(int i = 0; i < site_num; i++) {
