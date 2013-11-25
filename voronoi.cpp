@@ -890,6 +890,7 @@ void Display(void)
 	else
 		printf("Do not compute\n");
 
+	int i = 0;
 	while (bReCompute && k < K)
 	{
 		real fStar = BFGSOptimization();
@@ -1156,11 +1157,18 @@ void InitializeSites(int point_num)
 
 	bReCompute = true;
 
+	// Allicate Host-Mem(site_list). for reading from Device(site_list_dev).
 	memAllocHost<SiteType>(&site_list, &site_list_dev, point_num);
+
+	// Buffer for swap site_list
 	site_list_x = new float[(point_num) * 2];
 	site_list_x_bar = new float[(point_num) * 2];
+	
 	site_perturb_step = 0.5f / sqrtf(point_num);
 
+	// ------------------------------------------------------------
+	// Randomize Site-position
+	// ------------------------------------------------------------
 	bool *FlagArray = new bool[screenwidth*screenheight];
 	for (i=0; i<screenwidth*screenheight; i++)
 		FlagArray[i] = false;
@@ -1211,6 +1219,10 @@ void InitializeSites(int point_num)
 		site_list[i] = s;
 	}
 	delete FlagArray;
+
+	// ------------------------------------------------------------
+	// Set Color_Texture as Site-Index
+	// ------------------------------------------------------------
 	GLubyte *ColorTexImage = new GLubyte[screenwidth*screenheight*4];
 	for (i=0; i<screenheight; i++)
 		for (j=0; j<screenwidth; j++)
@@ -1244,12 +1256,17 @@ void InitializeSites(int point_num)
 
 	delete ColorTexImage;
 
+	// ------------------------------------------------------------
+	// Create Vertext-Buffer-Oobject(VBO) & Register graphic resource for VBO
+	// ------------------------------------------------------------
 	glGenBuffersARB(1, &vboId);
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB, vboId);
 	glBufferDataARB(GL_ARRAY_BUFFER_ARB, point_num * sizeof(VertexSiteType), NULL, GL_DYNAMIC_DRAW_ARB);
 	cudaGraphicsGLRegisterBuffer(&grVbo, vboId, cudaGraphicsMapFlagsWriteDiscard);
 
-
+	// ------------------------------------------------------------
+	// Create Color-Buffer-Object(CBO) and set from site_list
+	// ------------------------------------------------------------
 	glGenBuffersARB(1, &colorboId);
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB, colorboId);
 	glBufferDataARB(GL_ARRAY_BUFFER_ARB, point_num * sizeof(float) * 4, NULL, GL_DYNAMIC_DRAW_ARB);
@@ -1281,8 +1298,10 @@ void InitCg()
 	cgSetErrorCallback(CgErrorCallback);
 	Context = cgCreateContext();
 	VertexProfile = cgGLGetLatestProfile(CG_GL_VERTEX);
+	printf("VertexProfile %s\n", cgGetProfileString(VertexProfile));
 	cgGLSetOptimalOptions(VertexProfile);
 	FragmentProfile = cgGLGetLatestProfile(CG_GL_FRAGMENT);
+	printf("FragmentProfile %s\n", cgGetProfileString(FragmentProfile));
 	cgGLSetOptimalOptions(FragmentProfile);
 
 	VP_DrawSites = cgCreateProgramFromFile(Context,

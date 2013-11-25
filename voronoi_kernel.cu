@@ -184,6 +184,7 @@ extern void ConvertSites(real* x, cudaGraphicsResource_t gr, int nsite, int scre
 {
 	float *dptr;
 
+	// Maps the count graphics resources in resources for access by CUDA.
 	cudaGraphicsMapResources(1, &gr, stream);
     
 	size_t num_bytes; 
@@ -195,6 +196,7 @@ extern void ConvertSites(real* x, cudaGraphicsResource_t gr, int nsite, int scre
 	convertSiteKer<<<lbfgsbcuda::iDivUp(nsite, 512), 512, 0, stream>>>
 		(x, dptr, nsite, a1, a2);
 
+	// Unmaps the count graphics resources in resources.
 	cudaGraphicsUnmapResources(1, &gr, 0);
 }
 
