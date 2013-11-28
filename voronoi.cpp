@@ -78,25 +78,30 @@ void CheckFramebufferStatus()
 
 void DrawSites(real* x, const cudaStream_t& stream)
 {
+	// 점의 크기를 1픽셀로 설정
 	glPointSize(1);
 
+	// VBO를 바인딩하고, VertextPointer를 선언한다.
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB, vboId);
 
 	ConvertSites(x, grVbo, point_num * 2, screenwidth, stream);
 
 	glVertexPointer(2, GL_FLOAT, 0, 0);
 
+	// CBO를 바인딩하고, ColorPointer를 선언한다.
 	glBindBuffer(GL_ARRAY_BUFFER_ARB, colorboId);
 	glColorPointer(4, GL_FLOAT, 0, 0);
 	
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glEnableClientState(GL_COLOR_ARRAY);
 
+	// VBO, CBO 값을 파라미터로 밖에서 지정한 Shader가 실행
 	glDrawArrays(GL_POINTS, 0, point_num);
 
 	glDisableClientState(GL_COLOR_ARRAY);
 	glDisableClientState(GL_VERTEX_ARRAY);
 
+	// 바인딩 해제
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB, 0);
 }
 
@@ -109,8 +114,10 @@ void funcgrad(real* x, real& f, real* g, const cudaStream_t& stream)
 	//////////////////////////////////////////////
 	// First pass - Render the initial sites    //
 	//////////////////////////////////////////////
+
+	// FB_objects에 Processed_Texture[0]을 반영
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, FB_objects);
-	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, 
+	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, fbo_attachments[0],
 		GL_TEXTURE_RECTANGLE_NV, Processed_Texture[0], 0);
 	CheckFramebufferStatus();
 
