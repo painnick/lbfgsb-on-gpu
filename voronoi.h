@@ -19,6 +19,8 @@ All Rights Reserved.
 #ifdef WIN32
 	#include <GL/glut.h>
 	#include <GL/wglew.h>
+	#include "imdebug\imdebug.h"
+	#include "imdebug\imdebuggl.h"
 #else
 	#include <string.h>
 	#include <time.h>

@@ -140,7 +140,8 @@ void funcgrad(real* x, real& f, real* g, const cudaStream_t& stream)
 
 	DrawSites(x, stream);
 
-	glReadBuffer(fbo_attachments[0]);
+	// glReadBuffer(fbo_attachments[0]);
+	// imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA, "funcgrad - First Pass");
 
 	Current_Buffer = 1;
 
@@ -186,7 +187,8 @@ void funcgrad(real* x, real& f, real* g, const cudaStream_t& stream)
 			glVertex2f(float(screenwidth+1), float(screenheight+1));
 			glVertex2f(float(screenwidth+1), 1.0);
 		glEnd();
-		glReadBuffer(fbo_attachments[Current_Buffer]);
+		// glReadBuffer(fbo_attachments[Current_Buffer]);
+		// imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
 
 		if (steplength==1 && PassesBeforeJFA)
 		{
@@ -269,7 +271,8 @@ void funcgrad(real* x, real& f, real* g, const cudaStream_t& stream)
 		if (bNewIteration)
 		{
 			bNewIteration = false;
-			glReadBuffer(fbo_attachments[2]);
+			// glReadBuffer(fbo_attachments[2]);
+			// imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
 		}
 
 		Current_Buffer = 1-Current_Buffer;
@@ -396,7 +399,8 @@ real DrawVoronoi(real* xx)
 
 	DrawSites(xx, NULL);
 
-	glReadBuffer(fbo_attachments[0]);
+	// glReadBuffer(fbo_attachments[0]);
+	// imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
 
 	Current_Buffer = 1;
 
@@ -445,7 +449,8 @@ real DrawVoronoi(real* xx)
 			glVertex2f(float(screenwidth+1), float(screenheight+1));
 			glVertex2f(float(screenwidth+1), 1.0);
 			glEnd();
-			glReadBuffer(fbo_attachments[Current_Buffer]);
+			// glReadBuffer(fbo_attachments[Current_Buffer]);
+			// imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
 
 			if (steplength==1 && PassesBeforeJFA)
 			{
@@ -493,7 +498,8 @@ real DrawVoronoi(real* xx)
 		glVertex2f(1.0, float(screenheight+1));
 		glEnd();
 
-		glReadBuffer(fbo_attachments[0]);
+		// glReadBuffer(fbo_attachments[0]);
+		// imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
 
 		Current_Energy_Buffer = 1-Current_Energy_Buffer;
 
@@ -526,7 +532,8 @@ real DrawVoronoi(real* xx)
 			glVertex2f(1.0, float(quad_size+1));
 			glEnd();
 
-			glReadBuffer(fbo_attachments[0]);
+			// glReadBuffer(fbo_attachments[0]);
+			// imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
 
 			if (quad_size>1)
 			{
@@ -538,7 +545,8 @@ real DrawVoronoi(real* xx)
 			Current_Energy_Buffer = 1-Current_Energy_Buffer;
 		}
 		float total_sum[4];
-		glReadBuffer(fbo_attachments[0]);
+		// glReadBuffer(fbo_attachments[0]);
+		// imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
 		glReadPixels(1, 1, 1, 1, GL_RGBA, GL_FLOAT, &total_sum);
 		printf("Energy: %f\n", total_sum[0]);
 		fEnergy = total_sum[0];
@@ -614,7 +622,8 @@ real DrawVoronoi(real* xx)
 		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 		glDepthMask(GL_TRUE);
 
-		glReadBuffer(fbo_attachments[2]);
+		// glReadBuffer(fbo_attachments[2]);
+		// imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
 
 		do{
 			glGetQueryObjectivARB(occlusion_query, GL_QUERY_RESULT_AVAILABLE_ARB, &oq_available);
@@ -663,7 +672,8 @@ real DrawVoronoi(real* xx)
 		}
 		glEnd();
 
-		glReadBuffer(fbo_attachments[Current_Buffer]);
+		// glReadBuffer(fbo_attachments[Current_Buffer]);
+		// imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
 
 		Current_Buffer = 1-Current_Buffer;
 	}

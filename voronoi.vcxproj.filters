@@ -1,0 +1,151 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="L-FGBS-B">
+      <UniqueIdentifier>{35535b4d-3ec8-44f6-9e35-900b4d1411e8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Cg">
+      <UniqueIdentifier>{22bb8ec8-bd8b-474f-ac27-453f2820a061}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="imdebug">
+      <UniqueIdentifier>{8462c8d7-f744-4458-9a8b-3bf4a4c75f41}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="FP_ComputeEnergy.cg">
+      <Filter>Cg</Filter>
+    </None>
+    <None Include="FP_ScatterCentroid.cg">
+      <Filter>Cg</Filter>
+    </None>
+    <None Include="FP_ComputeEnergyCentroid.cg">
+      <Filter>Cg</Filter>
+    </None>
+    <None Include="FP_Deduction.cg">
+      <Filter>Cg</Filter>
+    </None>
+    <None Include="FP_DrawNewSites.cg">
+      <Filter>Cg</Filter>
+    </None>
+    <None Include="FP_DrawSites.cg">
+      <Filter>Cg</Filter>
+    </None>
+    <None Include="FP_DrawSitesOQ.cg">
+      <Filter>Cg</Filter>
+    </None>
+    <None Include="FP_FinalRender.cg">
+      <Filter>Cg</Filter>
+    </None>
+    <None Include="FP_Flood.cg">
+      <Filter>Cg</Filter>
+    </None>
+    <None Include="FP_Scatter.cg">
+      <Filter>Cg</Filter>
+    </None>
+    <None Include="VP_ComputeEnergy.cg">
+      <Filter>Cg</Filter>
+    </None>
+    <None Include="VP_ScatterCentroid.cg">
+      <Filter>Cg</Filter>
+    </None>
+    <None Include="VP_ComputeEnergyCentroid.cg">
+      <Filter>Cg</Filter>
+    </None>
+    <None Include="VP_Deduction.cg">
+      <Filter>Cg</Filter>
+    </None>
+    <None Include="VP_DrawNewSites.cg">
+      <Filter>Cg</Filter>
+    </None>
+    <None Include="VP_DrawSites.cg">
+      <Filter>Cg</Filter>
+    </None>
+    <None Include="VP_DrawSitesOQ.cg">
+      <Filter>Cg</Filter>
+    </None>
+    <None Include="VP_FinalRender.cg">
+      <Filter>Cg</Filter>
+    </None>
+    <None Include="VP_Flood.cg">
+      <Filter>Cg</Filter>
+    </None>
+    <None Include="VP_Scatter.cg">
+      <Filter>Cg</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="voronoi.cpp" />
+    <ClCompile Include="L-BFGS\ap.cpp">
+      <Filter>L-FGBS-B</Filter>
+    </ClCompile>
+    <ClCompile Include="L-BFGS\lbfgsb.cpp">
+      <Filter>L-FGBS-B</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="voronoi.h" />
+    <ClInclude Include="L-BFGS\ap.h">
+      <Filter>L-FGBS-B</Filter>
+    </ClInclude>
+    <ClInclude Include="L-BFGS\apvt.h">
+      <Filter>L-FGBS-B</Filter>
+    </ClInclude>
+    <ClInclude Include="L-BFGS\cutil_inline.h">
+      <Filter>L-FGBS-B</Filter>
+    </ClInclude>
+    <ClInclude Include="L-BFGS\lbfgsb.h">
+      <Filter>L-FGBS-B</Filter>
+    </ClInclude>
+    <ClInclude Include="L-BFGS\lbfgsbcuda.h">
+      <Filter>L-FGBS-B</Filter>
+    </ClInclude>
+    <ClInclude Include="L-BFGS\stdafx.h">
+      <Filter>L-FGBS-B</Filter>
+    </ClInclude>
+    <ClInclude Include="imdebug\imdebug.h">
+      <Filter>imdebug</Filter>
+    </ClInclude>
+    <ClInclude Include="imdebug\imdebuggl.h">
+      <Filter>imdebug</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="voronoi_kernel.cu" />
+    <CudaCompile Include="L-BFGS\active.cu">
+      <Filter>L-FGBS-B</Filter>
+    </CudaCompile>
+    <CudaCompile Include="L-BFGS\bmv.cu">
+      <Filter>L-FGBS-B</Filter>
+    </CudaCompile>
+    <CudaCompile Include="L-BFGS\cauchy.cu">
+      <Filter>L-FGBS-B</Filter>
+    </CudaCompile>
+    <CudaCompile Include="L-BFGS\cmprlb.cu">
+      <Filter>L-FGBS-B</Filter>
+    </CudaCompile>
+    <CudaCompile Include="L-BFGS\dpofa.cu">
+      <Filter>L-FGBS-B</Filter>
+    </CudaCompile>
+    <CudaCompile Include="L-BFGS\formk.cu">
+      <Filter>L-FGBS-B</Filter>
+    </CudaCompile>
+    <CudaCompile Include="L-BFGS\formt.cu">
+      <Filter>L-FGBS-B</Filter>
+    </CudaCompile>
+    <CudaCompile Include="L-BFGS\lnsrlb.cu">
+      <Filter>L-FGBS-B</Filter>
+    </CudaCompile>
+    <CudaCompile Include="L-BFGS\matupd.cu">
+      <Filter>L-FGBS-B</Filter>
+    </CudaCompile>
+    <CudaCompile Include="L-BFGS\minimize.cu">
+      <Filter>L-FGBS-B</Filter>
+    </CudaCompile>
+    <CudaCompile Include="L-BFGS\projgr.cu">
+      <Filter>L-FGBS-B</Filter>
+    </CudaCompile>
+    <CudaCompile Include="L-BFGS\subsm.cu">
+      <Filter>L-FGBS-B</Filter>
+    </CudaCompile>
+  </ItemGroup>
+</Project>
