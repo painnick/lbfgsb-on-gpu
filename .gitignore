@@ -12,7 +12,17 @@
 *.la
 *.a
 
+# Visual Studio
+*.sdf
+*.suo
+*.pdb
+*.vcxproj.user
+Debug/*
+Release/*
+
+# Intel C compiler
+ipch/*
+
 # etc
 *.d
 Default/*.cg
-/voronoi.cpp
