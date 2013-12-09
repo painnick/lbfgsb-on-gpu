@@ -324,13 +324,10 @@ real BFGSOptimization()
 	if (site_num * 2 < m)
 		m = site_num * 2;
 
-	for (int temp=0; temp<1; temp++)
-	{
-		bNewIteration = true;
-		// 내부적으로 funcgrad()를 호출
-		lbfgsbminimize(site_num*2, m, x, epsg, epsf, epsx, maxits, nbd, l, u, info);
-		//printf("Ending code:%d\n", info);
-	}
+	bNewIteration = true;
+	// 내부적으로 funcgrad()를 호출
+	lbfgsbminimize(site_num*2, m, x, epsg, epsf, epsx, maxits, nbd, l, u, info);
+	//printf("Ending code:%d\n", info);
 
 	get_timestamp(end_time);
 	elapsed_time = (end_time-start_time);
@@ -344,11 +341,23 @@ real BFGSOptimization()
 	// 이를 Host로 복사한 후, site_list에 할당
 	real* x_host = new real[site_num * 2];
 	memCopy(x_host, x, site_num * 2 * sizeof(real), cudaMemcpyDeviceToHost);
+
+	FILE* fp = fopen("Result.txt", "w");
 	for(int i = 0; i < site_num; i++) {
-		site_list[i].vertices[0].x = x_host[i * 2] * (screenwidth-1.0) + 1.0;
-		site_list[i].vertices[0].y = x_host[i * 2 + 1] * (screenwidth-1.0) + 1.0;
+
+		real a1 = (screenwidth - 1.0) * 0.5;
+		real a2 = a1 + 1.0;
+
+		real b1 = (screenwidth - 1.0) * 0.5;
+		real b2 = b1 + 1.0;
+
+		site_list[i].vertices[0].x = x_host[i * 2] * a1 + a2;
+		site_list[i].vertices[0].y = x_host[i * 2 + 1] * b1 + b2;
+
+		fprintf(fp, "%f, %f\n", site_list[i].vertices[0].x, site_list[i].vertices[0].y);
 	}
 	delete[] x_host;
+	fclose(fp);
 
 	memFreeHost(f_tb_host);
 	memFree(x);
@@ -371,16 +380,12 @@ real DrawVoronoi(real* xx)
 	// First pass - Render the initial sites    //
 	//////////////////////////////////////////////
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, FB_objects);
-	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, 
+	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, fbo_attachments[0], 
 		GL_TEXTURE_RECTANGLE_NV, Processed_Texture[0], 0);
 	CheckFramebufferStatus();
 
-	for (i=0; i<1; i++)
-	{
-		glDrawBuffer(fbo_attachments[i]);
-		glClearColor(-1, -1, -1, -1);
-		glClear(GL_COLOR_BUFFER_BIT);
-	}
+	glClearColor(-1, -1, -1, -1);
+	glClear(GL_COLOR_BUFFER_BIT);
 
 	glDrawBuffer(fbo_attachments[0]);
 
@@ -404,252 +409,28 @@ real DrawVoronoi(real* xx)
 
 	Current_Buffer = 1;
 
-	bool Converged = false;
-	while (!Converged)
+	/////////////////////////////////////
+	// Second pass - Flood the sites   //
+	/////////////////////////////////////
+	cgGLBindProgram(VP_Flood);
+	cgGLBindProgram(FP_Flood);
+
+	if (VP_Flood_Size != NULL)
+		cgSetParameter2f(VP_Flood_Size, screenwidth, screenheight);
+
+	bool ExitLoop = false;
+	bool SecondExit;
+	int steplength;;
+	SecondExit = (additional_passes==0);
+	bool PassesBeforeJFA;
+	PassesBeforeJFA = (additional_passes_before>0);
+	if (PassesBeforeJFA)
+		steplength = pow(2.0, (additional_passes_before-1));
+	else
+		steplength = (screenwidth>screenheight ? screenwidth : screenheight)/2;
+
+	while (!ExitLoop)
 	{
-		/////////////////////////////////////
-		// Second pass - Flood the sites   //
-		/////////////////////////////////////
-		cgGLBindProgram(VP_Flood);
-		cgGLBindProgram(FP_Flood);
-
-		if (VP_Flood_Size != NULL)
-			cgSetParameter2f(VP_Flood_Size, screenwidth, screenheight);
-
-		bool ExitLoop = false;
-		bool SecondExit;
-		int steplength;;
-		SecondExit = (additional_passes==0);
-		bool PassesBeforeJFA;
-		PassesBeforeJFA = (additional_passes_before>0);
-		if (PassesBeforeJFA)
-			steplength = pow(2.0, (additional_passes_before-1));
-		else
-			steplength = (screenwidth>screenheight ? screenwidth : screenheight)/2;
-
-		while (!ExitLoop)
-		{
-			glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, fbo_attachments[Current_Buffer], 
-				GL_TEXTURE_RECTANGLE_NV, Processed_Texture[Current_Buffer], 0);
-			CheckFramebufferStatus();
-			glDrawBuffer(fbo_attachments[Current_Buffer]);
-
-			glClearColor(-1, -1, -1, -1);
-			glClear(GL_COLOR_BUFFER_BIT);
-
-			//Bind & enable shadow map texture
-			glActiveTextureARB(GL_TEXTURE0_ARB);
-			glBindTexture(GL_TEXTURE_RECTANGLE_NV, Processed_Texture[1-Current_Buffer]);
-			if (VP_Flood_Steplength != NULL)
-				cgSetParameter1d(VP_Flood_Steplength, steplength);
-
-			glBegin(GL_QUADS);
-			glVertex2f(1.0, 1.0);
-			glVertex2f(1.0, float(screenheight+1));
-			glVertex2f(float(screenwidth+1), float(screenheight+1));
-			glVertex2f(float(screenwidth+1), 1.0);
-			glEnd();
-			// glReadBuffer(fbo_attachments[Current_Buffer]);
-			// imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
-
-			if (steplength==1 && PassesBeforeJFA)
-			{
-				steplength = (screenwidth>screenheight ? screenwidth : screenheight)/2;
-				PassesBeforeJFA = false;
-			}
-			else if (steplength>1)
-				steplength /= 2;
-			else if (SecondExit)
-				ExitLoop = true;
-			else
-			{
-				steplength = pow(2.0, (additional_passes-1));
-				SecondExit = true;
-			}
-			Current_Buffer = 1-Current_Buffer;
-		}
-		glReadPixels(1,1,screenwidth,screenheight,GL_RGBA,GL_FLOAT,buffer_screen);
-
-		///////////////////////////////
-		// Test pass, Compute energy //
-		///////////////////////////////
-		int Current_Energy_Buffer = 0;
-		glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, fbo_attachments[0], 
-			GL_TEXTURE_RECTANGLE_NV, Energy_Texture[Current_Energy_Buffer], 0);
-		CheckFramebufferStatus();
-		glDrawBuffer(fbo_attachments[0]);
-
-		glClearColor(0, 0, 0, 0);
-		glClear(GL_COLOR_BUFFER_BIT);
-
-		cgGLBindProgram(VP_ComputeEnergyCentroid);
-		cgGLBindProgram(FP_ComputeEnergyCentroid);
-
-		if (FP_ComputeEnergyCentroid_Size != NULL)
-			cgSetParameter2f(FP_ComputeEnergyCentroid_Size, screenwidth, screenheight);
-
-		glActiveTextureARB(GL_TEXTURE0_ARB);
-		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, Processed_Texture[1-Current_Buffer]);
-
-		glBegin(GL_QUADS);
-		glVertex2f(1.0, 1.0);
-		glVertex2f(float(screenwidth+1), 1.0);
-		glVertex2f(float(screenwidth+1), float(screenheight+1));
-		glVertex2f(1.0, float(screenheight+1));
-		glEnd();
-
-		// glReadBuffer(fbo_attachments[0]);
-		// imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
-
-		Current_Energy_Buffer = 1-Current_Energy_Buffer;
-
-		//////////////////////
-		// perform reduction
-		//////////////////////
-		cgGLBindProgram(VP_Deduction);
-		cgGLBindProgram(FP_Deduction);
-
-		bool ExitEnergyLoop = false;
-		int quad_size = int((screenwidth>screenheight?screenwidth:screenheight)/2.0+0.5);
-		while (!ExitEnergyLoop)
-		{
-			glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, fbo_attachments[0], 
-				GL_TEXTURE_RECTANGLE_NV, Energy_Texture[Current_Energy_Buffer], 0);
-			CheckFramebufferStatus();
-			glDrawBuffer(fbo_attachments[0]);
-
-			glClearColor(0, 0, 0, 0);
-			glClear(GL_COLOR_BUFFER_BIT);
-
-			//Bind & enable shadow map texture
-			glActiveTextureARB(GL_TEXTURE0_ARB);
-			glBindTexture(GL_TEXTURE_RECTANGLE_ARB, Energy_Texture[1-Current_Energy_Buffer]);
-
-			glBegin(GL_QUADS);
-			glVertex2f(1.0, 1.0);
-			glVertex2f(float(quad_size+1), 1.0);
-			glVertex2f(float(quad_size+1), float(quad_size+1));
-			glVertex2f(1.0, float(quad_size+1));
-			glEnd();
-
-			// glReadBuffer(fbo_attachments[0]);
-			// imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
-
-			if (quad_size>1)
-			{
-				int temp = quad_size/2;
-				quad_size = temp*2==quad_size ? temp : temp+1;
-			}
-			else
-				ExitEnergyLoop = true;
-			Current_Energy_Buffer = 1-Current_Energy_Buffer;
-		}
-		float total_sum[4];
-		// glReadBuffer(fbo_attachments[0]);
-		// imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
-		glReadPixels(1, 1, 1, 1, GL_RGBA, GL_FLOAT, &total_sum);
-		printf("Energy: %f\n", total_sum[0]);
-		fEnergy = total_sum[0];
-
-		//////////////////////////////////////////
-		// Third pass - Scatter points to sites //
-		//////////////////////////////////////////
-		cgGLBindProgram(VP_ScatterCentroid);
-		cgGLBindProgram(FP_ScatterCentroid);
-
-		glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, fbo_attachments[0], 
-			GL_TEXTURE_RECTANGLE_NV, Site_Texture, 0);
-		CheckFramebufferStatus();
-		glDrawBuffer(buffers[0]);
-
-		glClearColor(0, 0, 0, 0);
-		glClear(GL_COLOR_BUFFER_BIT);
-
-		if (VP_ScatterCentroid_Size != NULL)
-			cgSetParameter2f(VP_ScatterCentroid_Size, screenwidth, screenheight);
-
-		//Bind & enable shadow map texture
-		glActiveTextureARB(GL_TEXTURE0_ARB);
-		glBindTexture(GL_TEXTURE_RECTANGLE_NV, Processed_Texture[1-Current_Buffer]);
-
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_ONE, GL_ONE);
-		glBegin(GL_POINTS);
-		for (i=0; i<screenwidth; i++)
-			for (j=0; j<screenheight; j++)
-				glVertex2f(i+1.5, j+1.5);
-		glEnd();
-		glDisable(GL_BLEND);
-
-		Current_Buffer = 1-Current_Buffer;
-
-		///////////////////////////////////////
-		// Fourth pass - Test stop condition //
-		///////////////////////////////////////
-		cgGLBindProgram(VP_DrawSitesOQ);
-		cgGLBindProgram(FP_DrawSitesOQ);
-
-		glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, fbo_attachments[2], GL_RENDERBUFFER_EXT, RB_object);
-		CheckFramebufferStatus();
-		glDrawBuffer(fbo_attachments[2]);
-
-		glClearColor(0, 0, 0, 0);
-		glClear(GL_COLOR_BUFFER_BIT);
-
-		if (VP_DrawSitesOQ_Size != NULL)
-			cgSetParameter2f(VP_DrawSitesOQ_Size, screenwidth, screenheight);
-
-		//Bind & enable shadow map texture
-		glActiveTextureARB(GL_TEXTURE0_ARB);
-		glBindTexture(GL_TEXTURE_RECTANGLE_NV, Site_Texture);
-		glActiveTextureARB(GL_TEXTURE1_ARB);
-		glBindTexture(GL_TEXTURE_RECTANGLE_NV, Processed_Texture[Current_Buffer]);
-
-		glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-		glDepthMask(GL_FALSE);
-		glBeginQueryARB(GL_SAMPLES_PASSED_ARB, occlusion_query);
-		glBegin(GL_POINTS);
-		for (i=0; i<site_num; i++)
-		{
-			float xx, yy;
-			xx = i%screenwidth+1.5;
-			yy = i/screenheight+1.5;
-			glTexCoord1f(i);
-			glVertex2f(xx, yy);
-		}
-		glEnd();
-		glEndQueryARB(GL_SAMPLES_PASSED_ARB);
-		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-		glDepthMask(GL_TRUE);
-
-		// glReadBuffer(fbo_attachments[2]);
-		// imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
-
-		do{
-			glGetQueryObjectivARB(occlusion_query, GL_QUERY_RESULT_AVAILABLE_ARB, &oq_available);
-		}while(oq_available);
-		glGetQueryObjectuivARB(occlusion_query, GL_QUERY_RESULT_ARB, &sampleCount);
-		printf("sample count: %d\n", sampleCount);
-
-		if (sampleCount==0)
-			Converged = true;
-
-		static int temp = 0;
-		if (temp++>=0)
-			Converged = true;
-
-		if (Converged)
-		{
-			//exit(0);
-			break;
-		}
-
-		//////////////////////////////////////////////
-		// Fifth pass - Draw sites at new positions //
-		//////////////////////////////////////////////
-		cgGLBindProgram(VP_DrawNewSites);
-		cgGLBindProgram(FP_DrawNewSites);
-
 		glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, fbo_attachments[Current_Buffer], 
 			GL_TEXTURE_RECTANGLE_NV, Processed_Texture[Current_Buffer], 0);
 		CheckFramebufferStatus();
@@ -658,25 +439,199 @@ real DrawVoronoi(real* xx)
 		glClearColor(-1, -1, -1, -1);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		if (VP_DrawNewSites_Size != NULL)
-			cgSetParameter2f(VP_DrawNewSites_Size, screenwidth, screenheight);
+		//Bind & enable shadow map texture
+		glActiveTextureARB(GL_TEXTURE0_ARB);
+		glBindTexture(GL_TEXTURE_RECTANGLE_NV, Processed_Texture[1-Current_Buffer]);
+		if (VP_Flood_Steplength != NULL)
+			cgSetParameter1d(VP_Flood_Steplength, steplength);
 
-		glBegin(GL_POINTS);
-		for (i=0; i<site_num; i++)
-		{
-			float xx, yy;
-			xx = i%screenwidth+1.5;
-			yy = i/screenheight+1.5;
-			glTexCoord1f(i);
-			glVertex2f(xx, yy);
-		}
+		glBegin(GL_QUADS);
+		glVertex2f(1.0, 1.0);
+		glVertex2f(1.0, float(screenheight+1));
+		glVertex2f(float(screenwidth+1), float(screenheight+1));
+		glVertex2f(float(screenwidth+1), 1.0);
 		glEnd();
-
 		// glReadBuffer(fbo_attachments[Current_Buffer]);
 		// imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
 
+		if (steplength==1 && PassesBeforeJFA)
+		{
+			steplength = (screenwidth>screenheight ? screenwidth : screenheight)/2;
+			PassesBeforeJFA = false;
+		}
+		else if (steplength>1)
+			steplength /= 2;
+		else if (SecondExit)
+			ExitLoop = true;
+		else
+		{
+			steplength = pow(2.0, (additional_passes-1));
+			SecondExit = true;
+		}
 		Current_Buffer = 1-Current_Buffer;
 	}
+	glReadPixels(1,1,screenwidth,screenheight,GL_RGBA,GL_FLOAT,buffer_screen);
+
+	///////////////////////////////
+	// Test pass, Compute energy //
+	///////////////////////////////
+	int Current_Energy_Buffer = 0;
+	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, fbo_attachments[0], 
+		GL_TEXTURE_RECTANGLE_NV, Energy_Texture[Current_Energy_Buffer], 0);
+	CheckFramebufferStatus();
+	glDrawBuffer(fbo_attachments[0]);
+
+	glClearColor(0, 0, 0, 0);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	cgGLBindProgram(VP_ComputeEnergyCentroid);
+	cgGLBindProgram(FP_ComputeEnergyCentroid);
+
+	if (FP_ComputeEnergyCentroid_Size != NULL)
+		cgSetParameter2f(FP_ComputeEnergyCentroid_Size, screenwidth, screenheight);
+
+	glActiveTextureARB(GL_TEXTURE0_ARB);
+	glBindTexture(GL_TEXTURE_RECTANGLE_ARB, Processed_Texture[1-Current_Buffer]);
+
+	glBegin(GL_QUADS);
+	glVertex2f(1.0, 1.0);
+	glVertex2f(float(screenwidth+1), 1.0);
+	glVertex2f(float(screenwidth+1), float(screenheight+1));
+	glVertex2f(1.0, float(screenheight+1));
+	glEnd();
+
+	// glReadBuffer(fbo_attachments[0]);
+	// imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
+
+	Current_Energy_Buffer = 1-Current_Energy_Buffer;
+
+	//////////////////////
+	// perform reduction
+	//////////////////////
+	cgGLBindProgram(VP_Deduction);
+	cgGLBindProgram(FP_Deduction);
+
+	bool ExitEnergyLoop = false;
+	int quad_size = int((screenwidth>screenheight?screenwidth:screenheight)/2.0+0.5);
+	while (!ExitEnergyLoop)
+	{
+		glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, fbo_attachments[0], 
+			GL_TEXTURE_RECTANGLE_NV, Energy_Texture[Current_Energy_Buffer], 0);
+		CheckFramebufferStatus();
+		glDrawBuffer(fbo_attachments[0]);
+
+		glClearColor(0, 0, 0, 0);
+		glClear(GL_COLOR_BUFFER_BIT);
+
+		//Bind & enable shadow map texture
+		glActiveTextureARB(GL_TEXTURE0_ARB);
+		glBindTexture(GL_TEXTURE_RECTANGLE_ARB, Energy_Texture[1-Current_Energy_Buffer]);
+
+		glBegin(GL_QUADS);
+		glVertex2f(1.0, 1.0);
+		glVertex2f(float(quad_size+1), 1.0);
+		glVertex2f(float(quad_size+1), float(quad_size+1));
+		glVertex2f(1.0, float(quad_size+1));
+		glEnd();
+
+		// glReadBuffer(fbo_attachments[0]);
+		// imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
+
+		if (quad_size>1)
+		{
+			int temp = quad_size/2;
+			quad_size = temp*2==quad_size ? temp : temp+1;
+		}
+		else
+			ExitEnergyLoop = true;
+		Current_Energy_Buffer = 1-Current_Energy_Buffer;
+	}
+	float total_sum[4];
+	// glReadBuffer(fbo_attachments[0]);
+	// imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
+	glReadPixels(1, 1, 1, 1, GL_RGBA, GL_FLOAT, &total_sum);
+	printf("Energy: %f\n", total_sum[0]);
+	fEnergy = total_sum[0];
+
+	//////////////////////////////////////////
+	// Third pass - Scatter points to sites //
+	//////////////////////////////////////////
+	cgGLBindProgram(VP_ScatterCentroid);
+	cgGLBindProgram(FP_ScatterCentroid);
+
+	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, fbo_attachments[0], 
+		GL_TEXTURE_RECTANGLE_NV, Site_Texture, 0);
+	CheckFramebufferStatus();
+	glDrawBuffer(buffers[0]);
+
+	glClearColor(0, 0, 0, 0);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	if (VP_ScatterCentroid_Size != NULL)
+		cgSetParameter2f(VP_ScatterCentroid_Size, screenwidth, screenheight);
+
+	//Bind & enable shadow map texture
+	glActiveTextureARB(GL_TEXTURE0_ARB);
+	glBindTexture(GL_TEXTURE_RECTANGLE_NV, Processed_Texture[1-Current_Buffer]);
+
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_ONE, GL_ONE);
+	glBegin(GL_POINTS);
+	for (i=0; i<screenwidth; i++)
+		for (j=0; j<screenheight; j++)
+			glVertex2f(i+1.5, j+1.5);
+	glEnd();
+	glDisable(GL_BLEND);
+
+	Current_Buffer = 1-Current_Buffer;
+
+	///////////////////////////////////////
+	// Fourth pass - Test stop condition //
+	///////////////////////////////////////
+	cgGLBindProgram(VP_DrawSitesOQ);
+	cgGLBindProgram(FP_DrawSitesOQ);
+
+	glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, fbo_attachments[2], GL_RENDERBUFFER_EXT, RB_object);
+	CheckFramebufferStatus();
+	glDrawBuffer(fbo_attachments[2]);
+
+	glClearColor(0, 0, 0, 0);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	if (VP_DrawSitesOQ_Size != NULL)
+		cgSetParameter2f(VP_DrawSitesOQ_Size, screenwidth, screenheight);
+
+	//Bind & enable shadow map texture
+	glActiveTextureARB(GL_TEXTURE0_ARB);
+	glBindTexture(GL_TEXTURE_RECTANGLE_NV, Site_Texture);
+	glActiveTextureARB(GL_TEXTURE1_ARB);
+	glBindTexture(GL_TEXTURE_RECTANGLE_NV, Processed_Texture[Current_Buffer]);
+
+	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+	glDepthMask(GL_FALSE);
+	glBeginQueryARB(GL_SAMPLES_PASSED_ARB, occlusion_query);
+	glBegin(GL_POINTS);
+	for (i=0; i<site_num; i++)
+	{
+		float xx, yy;
+		xx = i%screenwidth+1.5;
+		yy = i/screenheight+1.5;
+		glTexCoord1f(i);
+		glVertex2f(xx, yy);
+	}
+	glEnd();
+	glEndQueryARB(GL_SAMPLES_PASSED_ARB);
+	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+	glDepthMask(GL_TRUE);
+
+	// glReadBuffer(fbo_attachments[2]);
+	// imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
+
+	do{
+		glGetQueryObjectivARB(occlusion_query, GL_QUERY_RESULT_AVAILABLE_ARB, &oq_available);
+	}while(oq_available);
+	glGetQueryObjectuivARB(occlusion_query, GL_QUERY_RESULT_ARB, &sampleCount);
+	printf("sample count: %d\n", sampleCount);
 
 	cgGLDisableProfile(VertexProfile);
 	cgGLDisableProfile(FragmentProfile);
@@ -825,7 +780,7 @@ real DrawVoronoi(real* xx)
 			}
 			else
 			{
-				ColorTexImage[id*4] = 
+					ColorTexImage[id*4] = 
 					ColorTexImage[id*4+1] = 
 					ColorTexImage[id*4+2] = 
 					ColorTexImage[id*4+3] = 0.0;
