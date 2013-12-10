@@ -68,8 +68,7 @@ bool output = false;
 
 int screenwidth, screenheight;
 int mode;
-int point_num, line_num, nurbs_num;
-int site_num;
+int point_num;
 int frame_num = 0;
 float speed;
 int additional_passes, additional_passes_before;
