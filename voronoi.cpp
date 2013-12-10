@@ -233,9 +233,9 @@ void funcgrad(real* x, real& f, real* g, const cudaStream_t& stream)
 	glCallList(ScreenPointsList);
 	glDisable(GL_BLEND);
 
-	Energyf(grSite, g, f_tb_dev, screenwidth, iSiteTextureHeight, site_num, stream);
+	Energyf(grSite, g, f_tb_dev, screenwidth, iSiteTextureHeight, point_num, stream);
 
-	lbfgsbcuda::CheckBuffer(g, site_num * 2, site_num * 2);
+	lbfgsbcuda::CheckBuffer(g, point_num * 2, point_num * 2);
 
 	if (bShowTestResults)
 	{
@@ -287,7 +287,7 @@ void funcgrad(real* x, real& f, real* g, const cudaStream_t& stream)
 
 real BFGSOptimization()
 {
-	printf("Before init sites(site_num=%d).\n", site_num);
+	printf("Before init sites(point_num=%d).\n", point_num);
 
 	// Use L-BFGS method to compute new sites
 	const real epsg = EPSG;
@@ -304,16 +304,16 @@ real BFGSOptimization()
 	int* nbd;
 	real* l;
 	real* u;
-	memAlloc<real>(&x, site_num * 2);
-	memAlloc<int>(&nbd, site_num * 2);
-	memAlloc<real>(&l, site_num * 2);
-	memAlloc<real>(&u, site_num * 2);
+	memAlloc<real>(&x, point_num * 2);
+	memAlloc<int>(&nbd, point_num * 2);
+	memAlloc<real>(&l, point_num * 2);
+	memAlloc<real>(&u, point_num * 2);
 	memAllocHost<real>(&f_tb_host, &f_tb_dev, 1);
 
 	// Kernel이 처리할 수 있도록 site_list를 매핑하는 site_list_dev를 전달.
 	// site_list는 InitializeSites()에서 지정
 	// Device에 할당된 x에 site_list가 복사
-	InitSites(x, (float*)site_list_dev, sizeof(SiteType) / sizeof(float), nbd, l, u, site_num * 2, screenwidth);
+	InitSites(x, (float*)site_list_dev, sizeof(SiteType) / sizeof(float), nbd, l, u, point_num * 2, screenwidth);
 
 	printf("Start optimization...");
 	get_timestamp(start_time);
@@ -321,12 +321,12 @@ real BFGSOptimization()
 	stpscal = 2.75f;
 
 	int	m = 8;
-	if (site_num * 2 < m)
-		m = site_num * 2;
+	if (point_num * 2 < m)
+		m = point_num * 2;
 
 	bNewIteration = true;
 	// 내부적으로 funcgrad()를 호출
-	lbfgsbminimize(site_num*2, m, x, epsg, epsf, epsx, maxits, nbd, l, u, info);
+	lbfgsbminimize(point_num*2, m, x, epsg, epsf, epsx, maxits, nbd, l, u, info);
 	//printf("Ending code:%d\n", info);
 
 	get_timestamp(end_time);
@@ -339,11 +339,11 @@ real BFGSOptimization()
 
 	// Device에 저장된 x가 실제 이동된 site 정보인 듯
 	// 이를 Host로 복사한 후, site_list에 할당
-	real* x_host = new real[site_num * 2];
-	memCopy(x_host, x, site_num * 2 * sizeof(real), cudaMemcpyDeviceToHost);
+	real* x_host = new real[point_num * 2];
+	memCopy(x_host, x, point_num * 2 * sizeof(real), cudaMemcpyDeviceToHost);
 
 	FILE* fp = fopen("Result.txt", "w");
-	for(int i = 0; i < site_num; i++) {
+	for(int i = 0; i < point_num; i++) {
 
 		real a1 = (screenwidth - 1.0) * 0.5;
 		real a2 = a1 + 1.0;
@@ -356,8 +356,9 @@ real BFGSOptimization()
 
 		fprintf(fp, "%f, %f\n", site_list[i].vertices[0].x, site_list[i].vertices[0].y);
 	}
-	delete[] x_host;
 	fclose(fp);
+
+	delete[] x_host;
 
 	memFreeHost(f_tb_host);
 	memFree(x);
@@ -611,7 +612,7 @@ real DrawVoronoi(real* xx)
 	glDepthMask(GL_FALSE);
 	glBeginQueryARB(GL_SAMPLES_PASSED_ARB, occlusion_query);
 	glBegin(GL_POINTS);
-	for (i=0; i<site_num; i++)
+	for (i=0; i<point_num; i++)
 	{
 		float xx, yy;
 		xx = i%screenwidth+1.5;
@@ -639,18 +640,18 @@ real DrawVoronoi(real* xx)
 	////////////////////
 	// compute measures
 	////////////////////
-	bool *bOnBoundary = new bool[site_num];
-	bool *bIsHexagon = new bool[site_num];
-	int *nNeighbors = new int[site_num*7];
-	real *dDiameter = new real[site_num];
-	real *dNeighborDist = new real[site_num];
+	bool *bOnBoundary = new bool[point_num];
+	bool *bIsHexagon = new bool[point_num];
+	int *nNeighbors = new int[point_num*7];
+	real *dDiameter = new real[point_num];
+	real *dNeighborDist = new real[point_num];
 
 	float site_pos[2], x, y, dist, neighbor_pos[2];
 	int id, drow, dcol, nrow, ncol, neighbor_id, k;
 	real dMaxDiameter, chi_id, chi;
 	int nHex, nVC;
 
-	for (id=0; id<site_num; id++)
+	for (id=0; id<point_num; id++)
 	{
 		bOnBoundary[id] = false;
 		bIsHexagon[id] = true;
@@ -727,12 +728,12 @@ real DrawVoronoi(real* xx)
 			}
 		}
 	}
-	for (id=0; id<site_num; id++)
+	for (id=0; id<point_num; id++)
 	{
 		if (nNeighbors[id*7]!=6)
 			bIsHexagon[id] = false;
 	}
-	for (id=0; id<site_num; id++)
+	for (id=0; id<point_num; id++)
 	{
 		dMaxDiameter = dMaxDiameter<dDiameter[id] ? dDiameter[id] : dMaxDiameter;
 		chi_id = 2*dDiameter[id]/dNeighborDist[id];
@@ -761,7 +762,7 @@ real DrawVoronoi(real* xx)
 		for (j=0; j<screenwidth; j++)
 		{
 			int id = i*screenwidth+j;
-			if (id<site_num)
+			if (id<point_num)
 			{
 				if (bIsHexagon[id])
 				{
@@ -935,7 +936,7 @@ void Keyboard(unsigned char key, int x, int y)
 	case '.':
 		{
 			point_num+=100;
-			site_num = point_num;
+			point_num = point_num;
 
 			DestroySites();
 			InitializeSites(point_num);
@@ -954,7 +955,7 @@ void Keyboard(unsigned char key, int x, int y)
 
 			if (decreased)
 			{
-				site_num = point_num;
+				point_num = point_num;
 
 				DestroySites();
 				InitializeSites(point_num);
@@ -1125,7 +1126,7 @@ void InitializeSites(int point_num)
 	additional_passes = 0;
 	additional_passes_before = 0;
 
-	iSiteTextureHeight = site_num/screenwidth+1;
+	iSiteTextureHeight = point_num/screenwidth+1;
 
 	bReCompute = true;
 
@@ -1141,56 +1142,64 @@ void InitializeSites(int point_num)
 	// ------------------------------------------------------------
 	// Randomize Site-position
 	// ------------------------------------------------------------
-	bool *FlagArray = new bool[screenwidth*screenheight];
-	for (i=0; i<screenwidth*screenheight; i++)
-		FlagArray[i] = false;
+	//bool *FlagArray = new bool[screenwidth*screenheight];
+	//for (i=0; i<screenwidth*screenheight; i++)
+	//	FlagArray[i] = false;
+
+	FILE* fp = fopen("init.txt", "r");
 
 	for (i=0; i<point_num; i++)
 	{
 		SiteType s;
 
-		v.x = (double)rand()/(double)RAND_MAX*(screenwidth-1.0)+1.0;
-		v.y = (double)rand()/(double)RAND_MAX*(screenheight-1.0)+1.0;
-		while(true) {
-			index = int(v.y)*screenwidth+int(v.x);
+		fscanf(fp, "%f, %f\n", &v.x, &v.y);
+	//	v.x = (double)rand()/(double)RAND_MAX*(screenwidth-1.0)+1.0;
+	//	v.y = (double)rand()/(double)RAND_MAX*(screenheight-1.0)+1.0;
+	//	while(true) {
+	//		index = int(v.y)*screenwidth+int(v.x);
 
-			if (FlagArray[index])
-			{
-				printf("\nDuplicate site found: #%d\n", i);
+	//		if (FlagArray[index])
+	//		{
+	//			printf("\nDuplicate site found: #%d\n", i);
 
-				v.x = v.x + ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f) * (float)(screenwidth-1);
-				v.y = v.y + ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f) * (float)(screenwidth-1);
+	//			v.x = v.x + ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f) * (float)(screenwidth-1);
+	//			v.y = v.y + ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f) * (float)(screenwidth-1);
 
-				while(v.x > (float)(screenwidth - 1)) {
-					v.x -= (float)screenwidth;
-				}
+	//			while(v.x > (float)(screenwidth - 1)) {
+	//				v.x -= (float)screenwidth;
+	//			}
 
-				while(v.x < 1.0f) {
-					v.x += (float)screenwidth;
-				}
+	//			while(v.x < 1.0f) {
+	//				v.x += (float)screenwidth;
+	//			}
 
-				while(v.y > (float)(screenheight - 1)) {
-					v.y -= (float)screenheight;
-				}
+	//			while(v.y > (float)(screenheight - 1)) {
+	//				v.y -= (float)screenheight;
+	//			}
 
-				while(v.y < 1.0f) {
-					v.y += (float)screenheight;
-				}
-			}
-			else
-			{
-				FlagArray[index] = true;
-				break;
-			}
-		}
+	//			while(v.y < 1.0f) {
+	//				v.y += (float)screenheight;
+	//			}
+	//		}
+	//		else
+	//		{
+	//			FlagArray[index] = true;
+	//			break;
+	//		}
+	//	}
 		s.vertices[0] = v;
 		s.color[0] = (float)rand()/(float)RAND_MAX;
 		s.color[1] = (float)rand()/(float)RAND_MAX;
 		s.color[2] = (float)rand()/(float)RAND_MAX;
 		s.color[3] = i;
 		site_list[i] = s;
+
+	//	fprintf(fp, "%f, %f\n", v.x, v.y);
 	}
-	delete FlagArray;
+
+	fclose(fp);
+
+	//delete FlagArray;
 
 	// ------------------------------------------------------------
 	// Set Color_Texture as Site-Index
@@ -1245,7 +1254,7 @@ void InitializeSites(int point_num)
 
 	GLvoid* pointer = glMapBufferARB(GL_ARRAY_BUFFER_ARB, GL_WRITE_ONLY_ARB);
 	float* sitelist = (float*)pointer;
-	for (i=0; i<site_num; i++)
+	for (i=0; i<point_num; i++)
 	{
 		sitelist[i * 4 + 0] = site_list[i].color[0];
 		sitelist[i * 4 + 1] = site_list[i].color[1];
@@ -1512,8 +1521,6 @@ int main(int argc, char *argv[])
 		bShowTestResults = atoi(argv[2]);
 
 	screenheight = screenwidth * 5 / 8;
-
-	site_num = point_num;
 
 	InitializeGlut(&argc, argv);
 
