@@ -237,46 +237,44 @@ void funcgrad(real* x, real& f, real* g, const cudaStream_t& stream)
 
 	lbfgsbcuda::CheckBuffer(g, point_num * 2, point_num * 2);
 
-	if (bShowTestResults)
+	///////////////////////////////////
+	// Test pass, Display the result //
+	///////////////////////////////////
+	cgGLBindProgram(VP_FinalRender);
+	cgGLBindProgram(FP_FinalRender);
+
+	glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, fbo_attachments[2], GL_RENDERBUFFER_EXT, RB_object);
+	CheckFramebufferStatus();
+	glDrawBuffer(fbo_attachments[2]);
+
+	glClearColor(0, 0, 0, 0);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	if (FP_FinalRender_Size != NULL)
+		cgSetParameter2f(FP_FinalRender_Size, screenwidth, screenheight);
+
+	glActiveTextureARB(GL_TEXTURE0_ARB);
+	glBindTexture(GL_TEXTURE_RECTANGLE_NV, Processed_Texture[1-Current_Buffer]);
+	glActiveTextureARB(GL_TEXTURE2_ARB);
+	glBindTexture(GL_TEXTURE_RECTANGLE_NV, Color_Texture);
+
+	glBegin(GL_QUADS);
+		glVertex2f(1.0, 1.0);
+		glVertex2f(1.0, float(screenheight+1));
+		glVertex2f(float(screenwidth+1), float(screenheight+1));
+		glVertex2f(float(screenwidth+1), 1.0);
+	glEnd();
+
+	nFuncCall++;
+	if (bNewIteration)
 	{
-		///////////////////////////////////
-		// Test pass, Display the result //
-		///////////////////////////////////
-		cgGLBindProgram(VP_FinalRender);
-		cgGLBindProgram(FP_FinalRender);
-
-		glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, fbo_attachments[2], GL_RENDERBUFFER_EXT, RB_object);
-		CheckFramebufferStatus();
-		glDrawBuffer(fbo_attachments[2]);
-
-		glClearColor(0, 0, 0, 0);
-		glClear(GL_COLOR_BUFFER_BIT);
-
-		if (FP_FinalRender_Size != NULL)
-			cgSetParameter2f(FP_FinalRender_Size, screenwidth, screenheight);
-
-		glActiveTextureARB(GL_TEXTURE0_ARB);
-		glBindTexture(GL_TEXTURE_RECTANGLE_NV, Processed_Texture[1-Current_Buffer]);
-		glActiveTextureARB(GL_TEXTURE2_ARB);
-		glBindTexture(GL_TEXTURE_RECTANGLE_NV, Color_Texture);
-
-		glBegin(GL_QUADS);
-			glVertex2f(1.0, 1.0);
-			glVertex2f(1.0, float(screenheight+1));
-			glVertex2f(float(screenwidth+1), float(screenheight+1));
-			glVertex2f(float(screenwidth+1), 1.0);
-		glEnd();
-
-		nFuncCall++;
-		if (bNewIteration)
-		{
-			bNewIteration = false;
-			// glReadBuffer(fbo_attachments[2]);
-			// imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
-		}
-
-		Current_Buffer = 1-Current_Buffer;
+		bNewIteration = false;
+		// glReadBuffer(fbo_attachments[2]);
+		// imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
 	}
+
+	Current_Buffer = 1-Current_Buffer;
+
 	glFinish();
 	get_timestamp(end_time_func);
 	elapsed_time_func = (end_time_func-start_time_func);
@@ -755,7 +753,6 @@ real DrawVoronoi(real* xx)
 	printf("chi: %f\n", chi);
 	printf("==== measures ====\n\n");
 
-#if 1
 	GLubyte *ColorTexImage = new GLubyte[screenwidth*screenwidth*4];
 	for (i=0; i<screenheight; i++)
 	{
@@ -799,7 +796,7 @@ real DrawVoronoi(real* xx)
 		screenheight, 0, GL_RGBA, GL_UNSIGNED_BYTE, ColorTexImage);
 
 	delete ColorTexImage;
-#endif
+
 	delete [] buffer_screen;
 	delete [] bOnBoundary;
 	delete [] bIsHexagon;
@@ -1139,67 +1136,87 @@ void InitializeSites(int point_num)
 	
 	site_perturb_step = 0.5f / sqrtf(point_num);
 
-	// ------------------------------------------------------------
-	// Randomize Site-position
-	// ------------------------------------------------------------
-	//bool *FlagArray = new bool[screenwidth*screenheight];
-	//for (i=0; i<screenwidth*screenheight; i++)
-	//	FlagArray[i] = false;
+	if(!bReadSitesFromFile) {
+		// ------------------------------------------------------------
+		// Randomize Site-position
+		// ------------------------------------------------------------
+		bool *FlagArray = new bool[screenwidth*screenheight];
+		for (i=0; i<screenwidth*screenheight; i++)
+			FlagArray[i] = false;
 
-	FILE* fp = fopen("init.txt", "r");
+		for (i=0; i<point_num; i++)
+		{
+			SiteType s;
 
-	for (i=0; i<point_num; i++)
-	{
-		SiteType s;
+			v.x = (double)rand()/(double)RAND_MAX*(screenwidth-1.0)+1.0;
+			v.y = (double)rand()/(double)RAND_MAX*(screenheight-1.0)+1.0;
+			while(true) {
+				index = int(v.y)*screenwidth+int(v.x);
 
-		fscanf(fp, "%f, %f\n", &v.x, &v.y);
-	//	v.x = (double)rand()/(double)RAND_MAX*(screenwidth-1.0)+1.0;
-	//	v.y = (double)rand()/(double)RAND_MAX*(screenheight-1.0)+1.0;
-	//	while(true) {
-	//		index = int(v.y)*screenwidth+int(v.x);
+				if (FlagArray[index])
+				{
+					printf("\nDuplicate site found: #%d\n", i);
 
-	//		if (FlagArray[index])
-	//		{
-	//			printf("\nDuplicate site found: #%d\n", i);
+					v.x = v.x + ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f) * (float)(screenwidth-1);
+					v.y = v.y + ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f) * (float)(screenwidth-1);
 
-	//			v.x = v.x + ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f) * (float)(screenwidth-1);
-	//			v.y = v.y + ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f) * (float)(screenwidth-1);
+					while(v.x > (float)(screenwidth - 1)) {
+						v.x -= (float)screenwidth;
+					}
 
-	//			while(v.x > (float)(screenwidth - 1)) {
-	//				v.x -= (float)screenwidth;
-	//			}
+					while(v.x < 1.0f) {
+						v.x += (float)screenwidth;
+					}
 
-	//			while(v.x < 1.0f) {
-	//				v.x += (float)screenwidth;
-	//			}
+					while(v.y > (float)(screenheight - 1)) {
+						v.y -= (float)screenheight;
+					}
 
-	//			while(v.y > (float)(screenheight - 1)) {
-	//				v.y -= (float)screenheight;
-	//			}
+					while(v.y < 1.0f) {
+						v.y += (float)screenheight;
+					}
+				}
+				else
+				{
+					FlagArray[index] = true;
+					break;
+				}
+			}
 
-	//			while(v.y < 1.0f) {
-	//				v.y += (float)screenheight;
-	//			}
-	//		}
-	//		else
-	//		{
-	//			FlagArray[index] = true;
-	//			break;
-	//		}
-	//	}
-		s.vertices[0] = v;
-		s.color[0] = (float)rand()/(float)RAND_MAX;
-		s.color[1] = (float)rand()/(float)RAND_MAX;
-		s.color[2] = (float)rand()/(float)RAND_MAX;
-		s.color[3] = i;
-		site_list[i] = s;
+			s.vertices[0] = v;
+			s.color[0] = (float)rand()/(float)RAND_MAX;
+			s.color[1] = (float)rand()/(float)RAND_MAX;
+			s.color[2] = (float)rand()/(float)RAND_MAX;
+			s.color[3] = i;
+			site_list[i] = s;
+		}
 
-	//	fprintf(fp, "%f, %f\n", v.x, v.y);
+		delete FlagArray;
 	}
+	else
+	{
+		// ------------------------------------------------------------
+		// Read Site-position from input file.
+		// ------------------------------------------------------------
+		FILE* fp = fopen("init.txt", "r");
 
-	fclose(fp);
 
-	//delete FlagArray;
+		for (i=0; i<point_num; i++)
+		{
+			SiteType s;
+
+			fscanf(fp, "%f, %f\n", &v.x, &v.y);
+
+			s.vertices[0] = v;
+			s.color[0] = (float)rand()/(float)RAND_MAX;
+			s.color[1] = (float)rand()/(float)RAND_MAX;
+			s.color[2] = (float)rand()/(float)RAND_MAX;
+			s.color[3] = i;
+			site_list[i] = s;
+		}
+
+		fclose(fp);
+	}
 
 	// ------------------------------------------------------------
 	// Set Color_Texture as Site-Index
@@ -1496,29 +1513,21 @@ void DestroyCg()
 int main(int argc, char *argv[])
 {
 	point_num = 8000;
-	screenwidth = screenheight = 1024;	
-	if (argc==1) {
-		printf("Point NUM#: \n");
-		scanf("%d", &point_num);
-		printf("Resolution: \n");
-		scanf("%d", &screenwidth);
-		int qn = 0;
-		while(screenwidth != 0) {
-			qn++;
-			screenwidth >>= 1;
-		}
-		screenwidth = 1 << (qn - 1);
-		screenheight = screenwidth;
-	} else
-		point_num = atoi(argv[1]);
+	screenwidth = screenheight = 1024;
+
+	if (argc != 4) {
+		printf("Usage : %s numOfSites screenWidth readSitesFromFile\n");
+		exit(-1);
+	}
+
+	point_num = atoi(argv[1]);
+	screenwidth = atoi(argv[2]);
+	bReadSitesFromFile = atoi(argv[2]);
 
 	if(screenwidth <= 1 || point_num < 2) {
 		printf("Invalid Args!\n");
 		return -1;
 	}
-
-	if (argc==3)
-		bShowTestResults = atoi(argv[2]);
 
 	screenheight = screenwidth * 5 / 8;
 

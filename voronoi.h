@@ -61,23 +61,15 @@ typedef struct SiteType{
 	float color[4];
 }SiteType;
 
-bool animation = false;
-bool site_visible = false;
-bool testFPS = false;
-bool output = false;
-
 int screenwidth, screenheight;
-int mode;
 int point_num;
-int frame_num = 0;
-float speed;
 int additional_passes, additional_passes_before;
 bool bReCompute;
 real stpscal;
+bool bReadSitesFromFile;
 
 SiteType *site_list;
 SiteType *site_list_dev;
-float *controlpoints;
 
 GLuint Processed_Texture[2], Site_Texture, Color_Texture, Energy_Texture[2], IndexColor_Texture;
 GLuint FB_objects, RB_object;
@@ -101,7 +93,6 @@ int iSiteTextureHeight;
 double EnergyValue;
 bool bNewIteration;
 int numIter;
-FILE *f_result;
 cublasHandle_t cublasHd;
 
 GLuint ScreenPointsList;
@@ -216,5 +207,4 @@ double elapsed_time_func, total_time_func;
 
 //#define DEBUG_TIME
 
-bool bShowTestResults = true;
 int nFuncCall;
