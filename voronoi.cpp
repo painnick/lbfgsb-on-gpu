@@ -1522,7 +1522,7 @@ int main(int argc, char *argv[])
 
 	point_num = atoi(argv[1]);
 	screenwidth = atoi(argv[2]);
-	bReadSitesFromFile = atoi(argv[2]);
+	bReadSitesFromFile = atoi(argv[3]);
 
 	if(screenwidth <= 1 || point_num < 2) {
 		printf("Invalid Args!\n");
