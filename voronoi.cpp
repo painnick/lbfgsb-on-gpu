@@ -292,7 +292,7 @@ real BFGSOptimization()
 	const real epsf = EPSF;
 	const real epsx = EPSX;
 	const int maxits = MAXITS;
-	stpscal = 2.75f; //Set for different problems!
+	stpscal = 2.0f; //Set for different problems!
 	int info;
 
 	total_time = 0;
@@ -315,8 +315,6 @@ real BFGSOptimization()
 
 	printf("Start optimization...");
 	get_timestamp(start_time);
-
-	stpscal = 2.75f;
 
 	int	m = 8;
 	if (point_num * 2 < m)
@@ -753,7 +751,10 @@ real DrawVoronoi(real* xx)
 	printf("chi: %f\n", chi);
 	printf("==== measures ====\n\n");
 
-	GLubyte *ColorTexImage = new GLubyte[screenwidth*screenwidth*4];
+	////////////////////
+	// Fill Octagon & another
+	////////////////////
+	GLubyte *ColorTexImage = new GLubyte[screenwidth*screenheight*4];
 	for (i=0; i<screenheight; i++)
 	{
 		for (j=0; j<screenwidth; j++)
@@ -894,13 +895,22 @@ void Display(void)
 			fEnergyBase = fStar;
 			printf("Base Updated!\n");
 		}
+
 		//Perturb X -> X*
 		k = k + 0.1;
 		for(int i = 0; i < point_num * 2; i++) {
-			site_list_x[i] = site_list_x[i] + 
-				((real)rand() / (real)RAND_MAX * 2.0 - 1.0) * 
-				site_perturb_step * (real)screenwidth;
-			site_list_x[i] = __max(1, __min(screenwidth - 1, site_list_x[i]));
+			if(i % 2 == 0) {
+				site_list_x[i] = site_list_x[i] + 
+					((real)rand() / (real)RAND_MAX * 2.0 - 1.0) * 
+					site_perturb_step * (real)screenwidth;
+				site_list_x[i] = __max(1, __min(screenwidth - 1, site_list_x[i]));
+			}
+			else {
+				site_list_x[i] = site_list_x[i] + 
+					((real)rand() / (real)RAND_MAX * 2.0 - 1.0) * 
+					site_perturb_step * (real)screenwidth;
+				site_list_x[i] = __max(1, __min(screenwidth - 1, site_list_x[i]));
+			}
 		}
 		CopySite(site_list, site_list_x, point_num);
 		printf("* Energy Base = %lf *\n", fEnergyBase);
