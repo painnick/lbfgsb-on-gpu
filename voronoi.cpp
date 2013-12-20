@@ -10,10 +10,20 @@ National University of Singapore
 All Rights Reserved.
 */
 
+/*
+ * 주요 FLOW
+ * Display()
+ * BFGSOptimization()
+ * - lbfgsbminimize()
+ * --- funcgrad()
+ * - DrawVoronoi()
+ */
+
 #include "voronoi.h"
 #include <assert.h>
 
 extern void Energyf(cudaGraphicsResource_t grSite, real* g, real* f, int w, int h, int nsite, const cudaStream_t& stream);
+// x를 VBO에 저장한다.
 extern void ConvertSites(real* x, cudaGraphicsResource_t gr, int nsite, int screenw, const cudaStream_t& stream);
 extern void InitSites(real* x, float* init_sites, int stride, int* nbd, real* l, real* u, int nsite, int screenw);
 
@@ -74,8 +84,7 @@ void CheckFramebufferStatus()
 	}
 }
 
-#define BUFFER_OFFSET(i) ((char*)NULL + (i))
-
+// x를 VBO에 복사한 후, VBO를 이용해 Site들을 출력한다.
 void DrawSites(real* x, const cudaStream_t& stream)
 {
 	// 점의 크기를 1픽셀로 설정
@@ -84,6 +93,7 @@ void DrawSites(real* x, const cudaStream_t& stream)
 	// VBO를 바인딩하고, VertextPointer를 선언한다.
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB, vboId);
 
+	// 배열에 x,y 좌표를 차례로 저장하고 있어, point_num*2의 크기를 지닌다.
 	ConvertSites(x, grVbo, point_num * 2, screenwidth, stream);
 
 	glVertexPointer(2, GL_FLOAT, 0, 0);
@@ -117,10 +127,13 @@ void funcgrad(real* x, real& f, real* g, const cudaStream_t& stream)
 
 	// FB_objects에 Processed_Texture[0]을 반영
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, FB_objects);
+	// 결과가 Processed_Texture[0]에 반영되도록 설정
+	// fbo_attachments는 ColorAttachemnt 번호
 	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, fbo_attachments[0],
 		GL_TEXTURE_RECTANGLE_NV, Processed_Texture[0], 0);
 	CheckFramebufferStatus();
 
+	// 출력할 버퍼를 선정
 	glDrawBuffer(fbo_attachments[0]);
 	glClearColor(-1, -1, -1, -1);
 	glClear(GL_COLOR_BUFFER_BIT);
@@ -143,7 +156,7 @@ void funcgrad(real* x, real& f, real* g, const cudaStream_t& stream)
 	// glReadBuffer(fbo_attachments[0]);
 	// imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA, "funcgrad - First Pass");
 
-	Current_Buffer = 1;
+	Current_Buffer = 1; // 다음에 사용할 Texture를 선정
 
 	/////////////////////////////////////
 	// Second pass - Flood the sites   //
@@ -167,6 +180,7 @@ void funcgrad(real* x, real& f, real* g, const cudaStream_t& stream)
 
 	while (!ExitLoop)
 	{
+		// Pixel 단위로 값을 저장하고 있는 Processed_Texture를 VertextBuffer로 사용???
 		glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, fbo_attachments[Current_Buffer], 
 			GL_TEXTURE_RECTANGLE_NV, Processed_Texture[Current_Buffer], 0);
 		CheckFramebufferStatus();
@@ -190,6 +204,7 @@ void funcgrad(real* x, real& f, real* g, const cudaStream_t& stream)
 		// glReadBuffer(fbo_attachments[Current_Buffer]);
 		// imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
 
+		// funcgrad가 2번 이상 호출하는 경우를 위한 초기화 코드
 		if (steplength==1 && PassesBeforeJFA)
 		{
 			steplength = (screenwidth>screenheight ? screenwidth : screenheight)/2;
@@ -204,6 +219,8 @@ void funcgrad(real* x, real& f, real* g, const cudaStream_t& stream)
 			steplength = pow(2.0, (additional_passes-1));
 			SecondExit = true;
 		}
+		
+		// Loop를 돌 때마다 다른 버퍼를 사용하도록 처리
 		Current_Buffer = 1-Current_Buffer;
 	}
 
@@ -226,6 +243,8 @@ void funcgrad(real* x, real& f, real* g, const cudaStream_t& stream)
 
 	//Bind & enable shadow map texture
 	glActiveTextureARB(GL_TEXTURE0_ARB);
+	// Loop 종료시 CurrentBuffer를 변경하기 때문에
+	// 완료된 버퍼를 사용하기 위해 1-Current_Buffer를 선택
 	glBindTexture(GL_TEXTURE_RECTANGLE_NV, Processed_Texture[1-Current_Buffer]);
 
 	glEnable(GL_BLEND);
@@ -243,6 +262,8 @@ void funcgrad(real* x, real& f, real* g, const cudaStream_t& stream)
 	cgGLBindProgram(VP_FinalRender);
 	cgGLBindProgram(FP_FinalRender);
 
+	// fbo_attachments[2]는 출력용 버퍼인 듯
+	// RB_object는 RenderBuffer
 	glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, fbo_attachments[2], GL_RENDERBUFFER_EXT, RB_object);
 	CheckFramebufferStatus();
 	glDrawBuffer(fbo_attachments[2]);
@@ -280,6 +301,7 @@ void funcgrad(real* x, real& f, real* g, const cudaStream_t& stream)
 	elapsed_time_func = (end_time_func-start_time_func);
 	total_time_func += elapsed_time_func;
 
+	// energyf()의 결과를 반환
 	f = *f_tb_host;
 }
 
@@ -1074,7 +1096,7 @@ void InitializeGlut(int *argc, char *argv[])
 	glTexParameteri(GL_TEXTURE_RECTANGLE_NV, GL_TEXTURE_WRAP_S, GL_CLAMP);
 	glTexParameteri(GL_TEXTURE_RECTANGLE_NV, GL_TEXTURE_WRAP_T, GL_CLAMP);
 
-	// R??? Buffer Object
+	// Render Buffer Object
 	glGenFramebuffersEXT(1, &RB_object);
 	glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, RB_object);
 	glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_RGBA32F_ARB, screenwidth+2, screenheight+2);
@@ -1266,6 +1288,7 @@ void InitializeSites(int point_num)
 
 	// ------------------------------------------------------------
 	// Create Vertext-Buffer-Oobject(VBO) & Register graphic resource for VBO
+	// DrawSites()에서 사용. CUDA를 통해 x를 VBO에 저장하기 위해 grVBO가 필요
 	// ------------------------------------------------------------
 	glGenBuffersARB(1, &vboId);
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB, vboId);
