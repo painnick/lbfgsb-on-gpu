@@ -362,17 +362,19 @@ real BFGSOptimization()
 
 	FILE* fp = fopen("Result.txt", "w");
 	for(int i = 0; i < point_num; i++) {
+		real ix = x_host[i * 2];
+		real iy = x_host[i * 2 + 1];
 
-		real a1 = (screenwidth - 1.0) * 0.5;
-		real a2 = a1 + 1.0;
+		real ox = (ix + 1) * (screenwidth - 1) / 2.0 + 1.0;
+		real oy = (iy + 1) * (screenheight - 1) / 2.0 + 1.0;
 
-		real b1 = (screenwidth - 1.0) * 0.5;
-		real b2 = b1 + 1.0;
+		if(1.0f > ox || ox > screenwidth - 1)
+			continue;
 
-		site_list[i].vertices[0].x = x_host[i * 2] * a1 + a2;
-		site_list[i].vertices[0].y = x_host[i * 2 + 1] * b1 + b2;
+		if(1.0f > oy || oy > screenheight - 1)
+			continue;
 
-		fprintf(fp, "%f, %f\n", site_list[i].vertices[0].x, site_list[i].vertices[0].y);
+		fprintf(fp, "%f, %f\n", ox, oy);
 	}
 	fclose(fp);
 
@@ -1562,7 +1564,7 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	screenheight = screenwidth * 5 / 8;
+	screenheight = screenwidth; // * 5 / 8;
 
 	InitializeGlut(&argc, argv);
 
