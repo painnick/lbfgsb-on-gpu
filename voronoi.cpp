@@ -24,8 +24,8 @@ All Rights Reserved.
 
 extern void Energyf(cudaGraphicsResource_t grSite, real* g, real* f, int w, int h, int nsite, const cudaStream_t& stream);
 // x를 VBO에 저장한다.
-extern void ConvertSites(real* x, cudaGraphicsResource_t gr, int nsite, int screenw, const cudaStream_t& stream);
-extern void InitSites(real* x, float* init_sites, int stride, int* nbd, real* l, real* u, int nsite, int screenw);
+extern void ConvertSites(real* x, cudaGraphicsResource_t gr, int nsite, int screenw, int screenh, const cudaStream_t& stream);
+extern void InitSites(real* x, float* init_sites, int stride, int* nbd, real* l, real* u, int nsite, int screenw, int screenh);
 
 // Temperary array for site_list
 float* site_list_x = NULL;
@@ -94,7 +94,7 @@ void DrawSites(real* x, const cudaStream_t& stream)
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB, vboId);
 
 	// 배열에 x,y 좌표를 차례로 저장하고 있어, point_num*2의 크기를 지닌다.
-	ConvertSites(x, grVbo, point_num * 2, screenwidth, stream);
+	ConvertSites(x, grVbo, point_num * 2, screenwidth, screenheight, stream);
 
 	glVertexPointer(2, GL_FLOAT, 0, 0);
 
@@ -333,7 +333,7 @@ real BFGSOptimization()
 	// Kernel이 처리할 수 있도록 site_list를 매핑하는 site_list_dev를 전달.
 	// site_list는 InitializeSites()에서 지정
 	// Device에 할당된 x에 site_list가 복사
-	InitSites(x, (float*)site_list_dev, sizeof(SiteType) / sizeof(float), nbd, l, u, point_num * 2, screenwidth);
+	InitSites(x, (float*)site_list_dev, sizeof(SiteType) / sizeof(float), nbd, l, u, point_num * 2, screenwidth, screenheight);
 
 	printf("Start optimization...");
 	get_timestamp(start_time);
