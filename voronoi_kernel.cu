@@ -155,17 +155,20 @@ extern void Energyf(cudaGraphicsResource_t grSite, real* g, real* f, int w, int 
 	cudaGraphicsUnmapResources(1, &grSite, stream);
 }
 
-__global__ void convertSiteKer(real* input, float* output, int nsite, real screenwidth_105, real screenwidth_1051) 
+__global__ void convertSiteKer(real* input, float* output, int nsite, real screenwidth_105, real screenwidth_1051, real screenheight_105, real screenheight_1051) 
 {
 	const int i = blockIdx.x * blockDim.x + threadIdx.x;
 
 	if(i >= nsite)
 		return;
 
-	output[i] = input[i] * screenwidth_105 + screenwidth_1051;
+	if(i % 2 == 0)
+		output[i] = input[i] * screenwidth_105 + screenwidth_1051;
+	else
+		output[i] = input[i] * screenheight_105 + screenheight_1051;
 }
 
-__global__ void initSiteKer(float* input, int stride, real* output, int* nbd, real* l, real* u, int nsite, real screenwidth_105, real screenwidth_1051) 
+__global__ void initSiteKer(float* input, int stride, real* output, int* nbd, real* l, real* u, int nsite, real screenwidth_105, real screenwidth_1051, real screenheight_105, real screenheight_1051)
 {
 	const int i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -174,13 +177,17 @@ __global__ void initSiteKer(float* input, int stride, real* output, int* nbd, re
 
 	const int i2 = (i >> 1) * stride + (i & 1);
 
-	output[i] = input[i2] * screenwidth_105 + screenwidth_1051;
+	if(i % 2 == 0)
+		output[i] = input[i2] * screenwidth_105 + screenwidth_1051;
+	else
+		output[i] = input[i2] * screenheight_105 + screenheight_1051;
+
 	nbd[i] = 2;
 	l[i] = -1.0;
 	u[i] = 1.0;
 }
 
-extern void ConvertSites(real* x, cudaGraphicsResource_t gr, int nsite, int screenw, const cudaStream_t& stream) 
+extern void ConvertSites(real* x, cudaGraphicsResource_t gr, int nsite, int screenw, int screenh, const cudaStream_t& stream) 
 {
 	float *dptr;
 
@@ -188,25 +195,31 @@ extern void ConvertSites(real* x, cudaGraphicsResource_t gr, int nsite, int scre
 	cudaGraphicsMapResources(1, &gr, stream);
     
 	size_t num_bytes; 
-    cudaGraphicsResourceGetMappedPointer((void **)&dptr, &num_bytes, gr);
+	cudaGraphicsResourceGetMappedPointer((void **)&dptr, &num_bytes, gr);
 
 	real a1 = (screenw - 1.0) * 0.5;
 	real a2 = a1 + 1.0;
 
+	real b1 = (screenh - 1.0) * 0.5;
+	real b2 = b1 + 1.0;
+
 	convertSiteKer<<<lbfgsbcuda::iDivUp(nsite, 512), 512, 0, stream>>>
-		(x, dptr, nsite, a1, a2);
+		(x, dptr, nsite, a1, a2, b1, b2);
 
 	// Unmaps the count graphics resources in resources.
 	cudaGraphicsUnmapResources(1, &gr, 0);
 }
 
-extern void InitSites(real* x, float* init_sites, int stride, int* nbd, real* l, real* u, int nsite, int screenw) 
+extern void InitSites(real* x, float* init_sites, int stride, int* nbd, real* l, real* u, int nsite, int screenw, int screenh) 
 {
 	float *dptr;
     
 	real a1 = 1 / real(screenw - 1) * 2.0;
 	real a2 = -a1 - 1.0;
 
+	real b1 = 1 / real(screenh - 1) * 2.0;
+	real b2 = -b1 - 1.0;
+
 	initSiteKer<<<lbfgsbcuda::iDivUp(nsite, 512), 512>>>
-		(init_sites, stride, x, nbd, l, u, nsite, a1, a2);
+		(init_sites, stride, x, nbd, l, u, nsite, a1, a2, b1, b2);
 }
