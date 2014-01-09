@@ -27,3 +27,4 @@ ipch/*
 *.d
 Default/*.cg
 *.opensdf
+*.txt
