@@ -37,7 +37,6 @@ Contributors:
 #include <stdio.h>
 
 extern int numIter;
-extern bool bNewIteration;
 extern FILE* f_result;
 extern int nFuncCall;
 extern bool bShowTestResults;

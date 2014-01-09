@@ -91,7 +91,6 @@ real* f_tb_dev;
 float *pReadBackValues;
 int iSiteTextureHeight;
 double EnergyValue;
-bool bNewIteration;
 int numIter;
 cublasHandle_t cublasHd;
 
@@ -206,5 +205,3 @@ timestamp start_time_func, end_time_func;
 double elapsed_time_func, total_time_func;
 
 //#define DEBUG_TIME
-
-int nFuncCall;

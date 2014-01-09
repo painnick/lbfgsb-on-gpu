@@ -26,3 +26,4 @@ ipch/*
 # etc
 *.d
 Default/*.cg
+*.opensdf

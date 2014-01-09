@@ -256,46 +256,6 @@ void funcgrad(real* x, real& f, real* g, const cudaStream_t& stream)
 
 	lbfgsbcuda::CheckBuffer(g, point_num * 2, point_num * 2);
 
-	///////////////////////////////////
-	// Test pass, Display the result //
-	///////////////////////////////////
-	cgGLBindProgram(VP_FinalRender);
-	cgGLBindProgram(FP_FinalRender);
-
-	// fbo_attachments[2]는 출력용 버퍼인 듯
-	// RB_object는 RenderBuffer
-	glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, fbo_attachments[2], GL_RENDERBUFFER_EXT, RB_object);
-	CheckFramebufferStatus();
-	glDrawBuffer(fbo_attachments[2]);
-
-	glClearColor(0, 0, 0, 0);
-	glClear(GL_COLOR_BUFFER_BIT);
-
-	if (FP_FinalRender_Size != NULL)
-		cgSetParameter2f(FP_FinalRender_Size, screenwidth, screenheight);
-
-	glActiveTextureARB(GL_TEXTURE0_ARB);
-	glBindTexture(GL_TEXTURE_RECTANGLE_NV, Processed_Texture[1-Current_Buffer]);
-	glActiveTextureARB(GL_TEXTURE2_ARB);
-	glBindTexture(GL_TEXTURE_RECTANGLE_NV, Color_Texture);
-
-	glBegin(GL_QUADS);
-		glVertex2f(1.0, 1.0);
-		glVertex2f(1.0, float(screenheight+1));
-		glVertex2f(float(screenwidth+1), float(screenheight+1));
-		glVertex2f(float(screenwidth+1), 1.0);
-	glEnd();
-
-	nFuncCall++;
-	if (bNewIteration)
-	{
-		bNewIteration = false;
-		// glReadBuffer(fbo_attachments[2]);
-		// imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
-	}
-
-	Current_Buffer = 1-Current_Buffer;
-
 	glFinish();
 	get_timestamp(end_time_func);
 	elapsed_time_func = (end_time_func-start_time_func);
@@ -342,7 +302,6 @@ real BFGSOptimization()
 	if (point_num * 2 < m)
 		m = point_num * 2;
 
-	bNewIteration = true;
 	// 내부적으로 funcgrad()를 호출
 	lbfgsbminimize(point_num*2, m, x, epsg, epsf, epsx, maxits, nbd, l, u, info);
 	//printf("Ending code:%d\n", info);
@@ -467,12 +426,12 @@ real DrawVoronoi(real* xx)
 			cgSetParameter1d(VP_Flood_Steplength, steplength);
 
 		glBegin(GL_QUADS);
-		glVertex2f(1.0, 1.0);
-		glVertex2f(1.0, float(screenheight+1));
-		glVertex2f(float(screenwidth+1), float(screenheight+1));
-		glVertex2f(float(screenwidth+1), 1.0);
+			glVertex2f(1.0, 1.0);
+			glVertex2f(1.0, float(screenheight+1));
+			glVertex2f(float(screenwidth+1), float(screenheight+1));
+			glVertex2f(float(screenwidth+1), 1.0);
 		glEnd();
-		// glReadBuffer(fbo_attachments[Current_Buffer]);
+		glReadBuffer(fbo_attachments[Current_Buffer]);
 		// imdebugPixelsf(0, 0, screenwidth+2, screenheight+2, GL_RGBA);
 
 		if (steplength==1 && PassesBeforeJFA)
@@ -852,13 +811,16 @@ real DrawVoronoi(real* xx)
 	cgGLBindProgram(VP_FinalRender);
 	cgGLBindProgram(FP_FinalRender);
 
+	if (FP_FinalRender_Size != NULL)
+		cgSetParameter2f(FP_FinalRender_Size, screenwidth, screenheight);
+
 	// Set parameters of fragment program
 
 	glBegin(GL_QUADS);
-	glVertex2f(0.0, 0.0);
-	glVertex2f(0.0, float(screenheight));
-	glVertex2f(float(screenwidth), float(screenheight));
-	glVertex2f(float(screenwidth), 0.0);
+		glVertex2f(0.0, 0.0);
+		glVertex2f(0.0, float(screenheight));
+		glVertex2f(float(screenwidth), float(screenheight));
+		glVertex2f(float(screenwidth), 0.0);
 	glEnd();
 
 	cgGLDisableProfile(VertexProfile);
